@@ -1,0 +1,32 @@
+<?php
+declare(strict_types=1);
+
+require_once __DIR__ . '/../models/FulfillmentModel.php';
+
+class FulfillmentController extends BaseController {
+    private FulfillmentModel $model;
+
+    public function __construct(PDO $pdo) {
+        parent::__construct($pdo);
+        $this->model = new FulfillmentModel($pdo);
+    }
+
+    public function index(): void {
+        $this->requireEmployee(['Administrator', 'Sales Representative']);
+        View::render(__DIR__ . '/../views/index.php', [
+            'orders' => $this->model->getPaidOrders(),
+            'employee' => $_SESSION['employee'],
+            'navActive' => 'fulfillment',
+            'pageTitle' => 'Fulfillment',
+            'pageHeading' => 'Fulfillment queue',
+        ]);
+    }
+
+    public function complete(): void {
+        $this->requireEmployee(['Administrator', 'Sales Representative']);
+        $orderId = trim((string) ($_POST['order_id'] ?? ''));
+        $this->model->completeOrder($orderId);
+        $this->setFlash('success', 'Order marked completed.');
+        $this->redirect(BASE_URL . '/?r=fulfillment/fulfillment/index');
+    }
+}
