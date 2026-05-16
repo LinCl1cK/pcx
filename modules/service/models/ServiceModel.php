@@ -17,11 +17,11 @@ class ServiceModel extends BaseModel {
     }
 
     public function getTechnicians(): array {
-        return $this->db->query("SELECT * FROM Employee WHERE Emp_Role = 'Technician' ORDER BY Emp_Fname")->fetchAll();
+        return $this->db->query("SELECT * FROM Employee WHERE Emp_Position = 'Technician' ORDER BY Emp_Fname")->fetchAll();
     }
 
     public function getFirstTechnicianId(): ?string {
-        $row = $this->db->query("SELECT Emp_Id FROM Employee WHERE Emp_Role = 'Technician' ORDER BY Emp_Id LIMIT 1")->fetch();
+        $row = $this->db->query("SELECT Emp_Id FROM Employee WHERE Emp_Position = 'Technician' ORDER BY Emp_Id LIMIT 1")->fetch();
         return $row ? (string) $row['Emp_Id'] : null;
     }
 

@@ -5,6 +5,7 @@ require_once __DIR__ . '/../app/config.php';
 require_once __DIR__ . '/../app/core/BaseModel.php';
 require_once __DIR__ . '/../app/core/BaseController.php';
 require_once __DIR__ . '/../app/core/View.php';
+require_once __DIR__ . '/../app/core/debug_helper.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();

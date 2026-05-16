@@ -1,168 +1,160 @@
 <?php
 /**
- * Database Setup Script - Run this ONCE to initialize the database
- * Place this file in the public folder and access via: http://localhost/pcx/public/setup.php
+ * Database Setup Script - Full CSV Integration
  */
 
-// Enable error reporting
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 require_once __DIR__ . '/../app/config.php';
 
-echo "<h1>PCX Database Setup</h1>";
+echo "<h1>PCX Database Setup: Full Integration</h1>";
 
 try {
-    // Create database connection without selecting a database
     $dsn = "mysql:host=" . DB_HOST . ";charset=utf8mb4";
-    $pdo = new PDO($dsn, DB_USER, DB_PASS, PDO_OPTIONS);
+    $pdo = new PDO($dsn, DB_USER, DB_PASS, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
     
-    echo "<h2>Step 1: Dropping existing database...</h2>";
-    $pdo->exec("DROP DATABASE IF EXISTS " . DB_NAME);
-    echo "✓ Dropped existing database<br>";
+    echo "<h2>Step 1: Reinitializing Database...</h2>";
+    $pdo->exec("DROP DATABASE IF EXISTS `pcx_db` ");
+    $pdo->exec("CREATE DATABASE `pcx_db` ");
     
-    echo "<h2>Step 2: Creating database...</h2>";
-    $pdo->exec("CREATE DATABASE " . DB_NAME);
-    echo "✓ Created database<br>";
+    $dsn = "mysql:host=" . DB_HOST . ";dbname=pcx_db;charset=utf8mb4";
+    $pdo = new PDO($dsn, DB_USER, DB_PASS, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
     
-    // Now select the new database
-    $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4";
-    $pdo = new PDO($dsn, DB_USER, DB_PASS, PDO_OPTIONS);
-    
-    echo "<h2>Step 3: Creating tables...</h2>";
-    $sqlFile = __DIR__ . '/../sql/001_create_tables.sql';
-    if (file_exists($sqlFile)) {
-        $sql = file_get_contents($sqlFile);
-        // Execute SQL statements
-        $statements = array_filter(array_map('trim', explode(';', $sql)));
-        foreach ($statements as $statement) {
-            if (!empty($statement)) {
-                $pdo->exec($statement . ';');
-            }
-        }
-        echo "✓ Tables created successfully<br>";
-    } else {
-        echo "✗ SQL file not found: $sqlFile<br>";
-    }
-    
-    echo "<h2>Step 4: Inserting seed data...</h2>";
-    
-    // Insert Branches
+    echo "<h2>Step 2: Creating Tables...</h2>";
+    $sql = file_get_contents(__DIR__ . '/../sql/001_create_tables.sql');
+    $pdo->exec($sql);
+
+    // 1. BRANCHES (Cebu)
+    echo "<h3>Populating Branches...</h3>";
     $branches = [
-        ['BR-00001', 'Main Branch', '123 Main Street, Downtown', '555-0001'],
-        ['BR-00002', 'North Branch', '456 North Ave, North District', '555-0002'],
-        ['BR-00003', 'South Branch', '789 South St, South Side', '555-0003'],
+        ['BRAN-001', 'PC Express - SM Seaside Cebu', 'SM Seaside City, SRP, Cebu City', '032-2556543'],
+        ['BRAN-002', 'PCX Gaming - SM City Cebu', 'SM City Cebu, Cyberzone, 2F', '032-3439343'],
+        ['BRAN-003', 'PC Express - Ayala Center Cebu', 'Ayala Center Cebu, Cebu Business Park', '032-2311234'],
+        ['BRAN-004', 'PC Express - Robinsons Galleria Cebu', 'Robinsons Galleria, Gen. Maxilom Ave, Cebu City', '032-2687654']
     ];
-    
-    $stmt = $pdo->prepare("INSERT INTO Branch (Branch_Id, Branch_Name, Branch_Location, Branch_ContactNo) VALUES (?, ?, ?, ?)");
-    foreach ($branches as $branch) {
-        $stmt->execute($branch);
-    }
-    echo "✓ Branches inserted<br>";
-    
-    // Insert Categories
-    $categories = [
-        ['CAT-0001', 'Electronics', 'Electronic devices and gadgets'],
-        ['CAT-0002', 'Computers', 'Desktop and laptop computers'],
-        ['CAT-0003', 'Accessories', 'Computer and electronic accessories'],
-        ['CAT-0004', 'Software', 'Operating systems and applications'],
-        ['CAT-0005', 'Peripherals', 'Printers, scanners, and other peripherals'],
-    ];
-    
-    $stmt = $pdo->prepare("INSERT INTO Category (Cat_Id, Cat_Name, Cat_Description) VALUES (?, ?, ?)");
-    foreach ($categories as $cat) {
-        $stmt->execute($cat);
-    }
-    echo "✓ Categories inserted<br>";
-    
-    // Insert Products
-    $products = [
-        ['PROD-0001', 'Laptop Pro 15', 'TechBrand', 1299.99, 24, 'CAT-0002', 'https://via.placeholder.com/300?text=Laptop', 1, 'High-performance laptop with 15-inch display', 'Active'],
-        ['PROD-0002', 'USB-C Cable', 'AccessoryPro', 15.99, 12, 'CAT-0003', 'https://via.placeholder.com/300?text=Cable', 0, 'Fast charging USB-C cable 2 meters', 'Active'],
-        ['PROD-0003', 'Wireless Mouse', 'PeripheralMax', 45.99, 12, 'CAT-0003', 'https://via.placeholder.com/300?text=Mouse', 1, 'Ergonomic wireless mouse with 2.4GHz', 'Active'],
-        ['PROD-0004', 'Mechanical Keyboard', 'KeyMaster', 89.99, 24, 'CAT-0003', 'https://via.placeholder.com/300?text=Keyboard', 0, 'RGB Mechanical keyboard', 'Active'],
-        ['PROD-0005', 'Monitor 27"', 'DisplayPro', 349.99, 36, 'CAT-0001', 'https://via.placeholder.com/300?text=Monitor', 1, '4K IPS monitor with USB-C', 'Active'],
-        ['PROD-0006', 'Webcam HD', 'CamTech', 79.99, 12, 'CAT-0001', 'https://via.placeholder.com/300?text=Webcam', 0, '1080p HD webcam with auto-focus', 'Active'],
-        ['PROD-0007', 'Printer MultiFunc', 'PrintMax', 199.99, 24, 'CAT-0005', 'https://via.placeholder.com/300?text=Printer', 0, 'All-in-one printer with wireless', 'Active'],
-        ['PROD-0008', 'External SSD 1TB', 'StoragePro', 129.99, 36, 'CAT-0001', 'https://via.placeholder.com/300?text=SSD', 1, 'Portable SSD with 1TB capacity', 'Active'],
-    ];
-    
-    $stmt = $pdo->prepare("INSERT INTO Product (Prod_Id, Prod_Name, Prod_Brand, Prod_Price, Prod_Warranty, Prod_CatId, Prod_Image, Prod_Featured, Prod_Description, Prod_Status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    foreach ($products as $prod) {
-        $stmt->execute($prod);
-    }
-    echo "✓ Products inserted<br>";
-    
-    // Insert Promotions
-    $promos = [
-        ['Summer Sale', '20% off on all electronics', 'https://via.placeholder.com/800?text=Summer+Sale', 'Active', '2026-05-01', '2026-06-30'],
-        ['Back to School', '15% discount for students', 'https://via.placeholder.com/800?text=Back+to+School', 'Active', '2026-07-01', '2026-09-30'],
-        ['Black Friday', 'Up to 50% off on selected items', 'https://via.placeholder.com/800?text=Black+Friday', 'Inactive', '2026-11-01', '2026-11-30'],
-    ];
-    
-    $stmt = $pdo->prepare("INSERT INTO Promotion (Promo_Title, Promo_Description, Promo_Banner, Promo_Status, Promo_Start, Promo_End) VALUES (?, ?, ?, ?, ?, ?)");
-    foreach ($promos as $promo) {
-        $stmt->execute($promo);
-    }
-    echo "✓ Promotions inserted<br>";
-    
-    // Insert Employees with test password 'admin123'
-    // Hash: $2y$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcg7b3XeKeUxWdeS86E36P4/TVm.
+    $stmt = $pdo->prepare("INSERT INTO branch (Branch_Id, Branch_Name, Branch_Location, Branch_ContactNo) VALUES (?, ?, ?, ?)");
+    foreach ($branches as $b) $stmt->execute($b);
+
+    // 2. EMPLOYEES (Covering all roles per schema)
+    echo "<h3>Populating Employees...</h3>";
     $employees = [
-        ['EMP-00001', 'Admin', 'User', 'Administrator', 'BR-00001', 'admin', '$2y$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcg7b3XeKeUxWdeS86E36P4/TVm.'],
-        ['EMP-00002', 'John', 'Sales', 'Sales Representative', 'BR-00001', 'john', '$2y$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcg7b3XeKeUxWdeS86E36P4/TVm.'],
-        ['EMP-00003', 'Tech', 'Support', 'Technician', 'BR-00002', 'tech', '$2y$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcg7b3XeKeUxWdeS86E36P4/TVm.'],
+        ['EMP-001', 'Juan', 'Dela Cruz', 'juan.dc@pcx.com.ph', 'Administrator', 'BRAN-001', password_hash('admin123', PASSWORD_DEFAULT)],
+        ['EMP-002', 'Maria', 'Santos', 'm.santos@pcx.com.ph', 'Sales Representative', 'BRAN-001', password_hash('sales123', PASSWORD_DEFAULT)],
+        ['EMP-003', 'Rico', 'Blanco', 'r.blanco@pcx.com.ph', 'Technician', 'BRAN-002', password_hash('tech123', PASSWORD_DEFAULT)],
+        ['EMP-004', 'Elena', 'Adarna', 'e.adarna@pcx.com.ph', 'Manager', 'BRAN-003', password_hash('manager123', PASSWORD_DEFAULT)],
+        ['EMP-005', 'Kevin', 'Alas', 'k.alas@pcx.com.ph', 'Sales Representative', 'BRAN-004', password_hash('sales123', PASSWORD_DEFAULT)]
     ];
-    
-    $stmt = $pdo->prepare("INSERT INTO Employee (Emp_Id, Emp_Fname, Emp_Lname, Emp_Role, Emp_BranchId, Emp_Email, Emp_PasswordHash) VALUES (?, ?, ?, ?, ?, ?, ?)");
-    foreach ($employees as $emp) {
-        $stmt->execute($emp);
-    }
-    echo "✓ Employees inserted<br>";
-    
-    // Insert Customers with test password 'customer123'
-    $customers = [
-        ['CUST-00001', 'Test', 'Customer', 'customer@test.local', '$2y$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcg7b3XeKeUxWdeS86E36P4/TVm.', '555-1234', '100 Test Street, Test City'],
-        ['CUST-00002', 'Jane', 'Doe', 'jane@test.local', '$2y$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcg7b3XeKeUxWdeS86E36P4/TVm.', '555-5678', '200 Doe Avenue, Test City'],
+    $stmt = $pdo->prepare("INSERT INTO employee (Emp_Id, Emp_Fname, Emp_Lname, Emp_Email, Emp_Position, Emp_BranchId, Emp_Password) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    foreach ($employees as $e) $stmt->execute($e);
+
+    // 3. CATEGORIES (Full Cat.csv)
+    echo "<h3>Populating All Categories...</h3>";
+    $categories = [
+        ['CAT-001', 'Laptops', 'Portable computers for work and gaming'],
+        ['CAT-002', 'PC Components', 'Motherboards, CPUs, GPUs, RAM, Storage'],
+        ['CAT-003', 'Monitors', 'LCD, LED, Gaming Displays'],
+        ['CAT-004', 'Smartphones', 'Mobile phones and accessories'],
+        ['CAT-005', 'Peripherals', 'Keyboards, Mice, Headsets, Accessories'],
+        ['CAT-006', 'Software', 'Operating systems and productivity tools'],
+        ['CAT-007', 'Desktop PCs', 'Custom and prebuilt desktop computers for work and gaming'],
+        ['CAT-008', 'Gaming Devices & Accessories', 'Consoles, gaming peripherals, and accessories']
     ];
-    
-    $stmt = $pdo->prepare("INSERT INTO Customer (Cus_Id, Cus_Fname, Cus_Lname, Cus_Email, Cus_Password, Cus_ContactNo, Cus_Address) VALUES (?, ?, ?, ?, ?, ?, ?)");
-    foreach ($customers as $cust) {
-        $stmt->execute($cust);
-    }
-    echo "✓ Customers inserted<br>";
-    
-    // Insert Inventory
-    $inventory = [
-        ['INV-00001', 'PROD-0001', 'BR-00001', 15, 5],
-        ['INV-00002', 'PROD-0002', 'BR-00001', 100, 20],
-        ['INV-00003', 'PROD-0003', 'BR-00001', 50, 10],
-        ['INV-00004', 'PROD-0004', 'BR-00002', 25, 5],
-        ['INV-00005', 'PROD-0005', 'BR-00001', 8, 3],
-        ['INV-00006', 'PROD-0006', 'BR-00002', 30, 10],
-        ['INV-00007', 'PROD-0007', 'BR-00003', 12, 4],
-        ['INV-00008', 'PROD-0008', 'BR-00001', 20, 5],
+    $stmt = $pdo->prepare("INSERT INTO category (Cat_Id, Cat_Name, Cat_Description) VALUES (?, ?, ?)");
+    foreach ($categories as $c) $stmt->execute($c);
+
+    // 4. SUBCATEGORIES (Full Subc.csv)
+    echo "<h3>Populating All Subcategories...</h3>";
+    $subc = [
+        ['SUBC-001', 'Gaming', 'High performance gaming products'],
+        ['SUBC-002', 'Powered by ASUS', 'ASUS certified builds and devices'],
+        ['SUBC-003', 'Intel i7', 'Intel Core i7 processors'],
+        ['SUBC-004', 'NVIDIA', 'NVIDIA graphics powered devices'],
+        ['SUBC-005', 'Business Solutions', 'Enterprise and productivity systems'],
+        ['SUBC-006', 'AMD Ryzen', 'AMD Ryzen processors'],
+        ['SUBC-007', 'Samsung Monitors', 'Samsung branded displays'],
+        ['SUBC-008', 'Microsoft', 'Microsoft software and solutions'],
+        ['SUBC-009', 'Mechanical Keyboards', 'Tactile and high-durability input devices'],
+        ['SUBC-010', 'Gaming Headsets', 'Immersive audio solutions for gamers'],
+        ['SUBC-011', 'Solid State Drives (SSD)', 'High-speed internal and external storage'],
+        ['SUBC-012', 'Liquid Cooling', 'AIO and custom loop cooling solutions'],
+        ['SUBC-013', 'Productivity Monitors', 'Color-accurate and large-format displays for work'],
+        ['SUBC-014', 'Motherboards', 'Intel and AMD socket compatible boards'],
+        ['SUBC-015', 'External Storage', 'Portable hard drives and high-speed flash storage']
     ];
+    $stmt = $pdo->prepare("INSERT INTO subcategory (Subc_Id, Subc_Name, Subc_Description) VALUES (?, ?, ?)");
+    foreach ($subc as $s) $stmt->execute($s);
+
+// 5. POPULATE ALL PRODUCTS (MUST BE DEFINED BEFORE INVENTORY)
+    echo "<h3>Populating All Products...</h3>";
+    $products = [
+        ['PROD-001', 'ASUS ROG Strix G16', 'ASUS', 89995, 24, 'CAT-001', 'rog_g16.png', 0],
+        ['PROD-002', 'Lenovo IdeaPad Slim 3', 'Lenovo', 54995, 12, 'CAT-001', 'ideapad_slim3.png', 0],
+        ['PROD-003', 'Intel Core i7-14700K', 'Intel', 24995, 36, 'CAT-002', 'intel_i7.png', 0],
+        ['PROD-004', 'NVIDIA GeForce RTX 4060', 'NVIDIA', 19995, 24, 'CAT-002', 'rtx4060.png', 0],
+        ['PROD-005', 'Samsung Odyssey G5 Monitor', 'Samsung', 15995, 12, 'CAT-003', 'odyssey_g5.png', 0],
+        ['PROD-006', 'AMD Ryzen 7 7800X3D', 'AMD', 22995, 36, 'CAT-002', 'ryzen7800.png', 0],
+        ['PROD-007', 'Microsoft Office 365', 'Microsoft', 3995, 12, 'CAT-006', 'office365.png', 0],
+        ['PROD-008', 'MSI Raider GE78 HX', 'MSI', 124995, 24, 'CAT-001', 'msi_raider.webp', 1],
+        ['PROD-009', 'Gigabyte AORUS Master Z790', 'Gigabyte', 28995, 36, 'CAT-002', 'aorus_z790.png', 1],
+        ['PROD-010', 'NVIDIA GeForce RTX 4070 Super', 'NVIDIA', 34995, 24, 'CAT-002', 'rtx4070super.png', 1],
+        ['PROD-011', 'LG UltraGear 32GP850', 'LG', 22995, 12, 'CAT-003', 'lg_ultragear.webp', 1],
+        ['PROD-012', 'Razer BlackShark V2 Pro', 'Razer', 9995, 12, 'CAT-005', 'razer_blackshark.png', 1],
+        ['PROD-013', 'Corsair iCUE H150i Elite', 'Corsair', 12995, 36, 'CAT-002', 'corsair_h150i.png', 1],
+        ['PROD-014', 'Apple MacBook Pro M3', 'Apple', 129995, 24, 'CAT-001', 'macbook_pro_m3.png', 1],
+        ['PROD-015', 'Seagate FireCuda 530 2TB SSD', 'Seagate', 15995, 36, 'CAT-002', 'firecuda_530.jpg', 1]
+    ];
+    $stmt = $pdo->prepare("INSERT INTO product (Prod_Id, Prod_Name, Prod_Brand, Prod_Price, Prod_Warranty, Prod_CatId, Prod_Image, Prod_Featured) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    foreach ($products as $p) $stmt->execute($p);
+
+    // 6. ENHANCED PRODUCT-SUBCATEGORY MAPPING (Keep this, delete your old Step 6)
+    echo "<h3>Mapping Products to Appropriate Subcategories...</h3>";
+    $links = [
+        ['PROD-001', 'SUBC-001'], ['PROD-001', 'SUBC-002'], ['PROD-001', 'SUBC-004'],
+        ['PROD-002', 'SUBC-005'], ['PROD-008', 'SUBC-001'], ['PROD-014', 'SUBC-005'],
+        ['PROD-003', 'SUBC-003'], ['PROD-006', 'SUBC-006'], ['PROD-004', 'SUBC-004'],
+        ['PROD-010', 'SUBC-004'], ['PROD-005', 'SUBC-007'], ['PROD-011', 'SUBC-007'],
+        ['PROD-015', 'SUBC-011'], ['PROD-015', 'SUBC-015'], ['PROD-012', 'SUBC-010'],
+        ['PROD-013', 'SUBC-012'], ['PROD-009', 'SUBC-014'], ['PROD-007', 'SUBC-008']
+    ];
+    $stmt = $pdo->prepare("INSERT INTO product_subcategory (Prod_Id, Subc_Id) VALUES (?, ?)");
+    foreach ($links as $l) $stmt->execute($l);
+
+    // 7. PROMOTIONS (Promo.csv)
+    echo "<h3>Populating Promotions...</h3>";
+    $promos = [
+        [1, 'Kingston Banner', 'High-performance memory and storage solutions.', 'Kingston-Banner-1800x600.webp', 'Active', '2026-05-01', '2026-06-30'],
+        [2, 'PCX Promo', 'Exclusive PCX deals and bundles.', 'PCX_1800x600_b2923a14-4d61-449c-ab4b-c3a509c0a10f.webp', 'Active', '2026-05-01', '2026-06-30'],
+        [3, 'Business Solutions', 'Reliable systems for productivity and enterprise.', '1800p_x_600p_Business_solutions.webp', 'Active', '2026-05-01', '2026-06-30'],
+        [4, 'Samsung AI Monitor', 'Next-gen AI-powered displays.', '1800x600-Samsung-AI-Monitor.webp', 'Active', '2026-05-01', '2026-06-30'],
+        [5, 'AMD Aorus Family', 'Gaming hardware powered by AMD.', 'AMD_Aorus_Family_-_1800x600_f451b045-c395-43b5-8f79-9a58d00b5f69.webp', 'Active', '2026-05-01', '2026-06-30']
+    ];
+    $stmt = $pdo->prepare("INSERT INTO promotion (Promo_Id, Promo_Title, Promo_Description, Promo_Banner, Promo_Status, Promo_Start, Promo_End) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    foreach ($promos as $pr) $stmt->execute($pr);
+
+    // 8. INVENTORY (Distributed with partial stocks)
+    echo "<h3>Distributing Inventory to Branches...</h3>";
+    // Distributing all products with logical branch variations
+    $inventory = [];
+    $invCount = 1;
+    $branchIds = ['BRAN-001', 'BRAN-002', 'BRAN-003', 'BRAN-004'];
     
-    $stmt = $pdo->prepare("INSERT INTO Inventory (Inv_Id, Inv_ProdId, Inv_BranchId, Inv_StockQty, Inv_ReorderLevel) VALUES (?, ?, ?, ?, ?)");
-    foreach ($inventory as $inv) {
-        $stmt->execute($inv);
+    foreach ($products as $idx => $p) {
+        // Distribute to 2-3 branches only to ensure incomplete stock per branch
+        $assignedBranches = array_rand(array_flip($branchIds), rand(2, 3));
+        foreach ($assignedBranches as $bId) {
+            $idStr = "INV-" . str_pad($invCount++, 3, "0", STR_PAD_LEFT);
+            $qty = rand(5, 50);
+            $reorder = 10;
+            $inventory[] = [$idStr, $p[0], $bId, $qty, $reorder];
+        }
     }
-    echo "✓ Inventory inserted<br>";
-    
-    echo "<h2 style='color: green;'>Setup Complete!</h2>";
-    echo "<h3>Test Credentials:</h3>";
-    echo "<p><strong>Employee Login:</strong><br>";
-    echo "Username: <code>admin</code>, Password: <code>admin123</code> (Administrator)<br>";
-    echo "Username: <code>john</code>, Password: <code>admin123</code> (Sales Representative)<br>";
-    echo "Username: <code>tech</code>, Password: <code>admin123</code> (Technician)</p>";
-    echo "<p><strong>Customer Login/Register:</strong><br>";
-    echo "Email: <code>customer@test.local</code>, Password: <code>customer123</code><br>";
-    echo "Or register a new account</p>";
-    echo "<p><a href='" . BASE_URL . "/?r=auth/auth/login' class='btn btn-primary'>Go to Login</a></p>";
-    
-} catch (Exception $e) {
-    echo "<h2 style='color: red;'>Error: " . htmlspecialchars($e->getMessage()) . "</h2>";
-    echo "<pre>" . htmlspecialchars($e->getTraceAsString()) . "</pre>";
+    $stmt = $pdo->prepare("INSERT INTO inventory (Inv_Id, Inv_ProdId, Inv_BranchId, Inv_StockQty, Inv_ReorderLevel) VALUES (?, ?, ?, ?, ?)");
+    foreach ($inventory as $inv) $stmt->execute($inv);
+
+    echo "<h2 style='color: green;'>Full Integration Success!</h2>";
+
+} catch (PDOException $e) {
+    die("Setup failed: " . $e->getMessage());
+
 }
-?>

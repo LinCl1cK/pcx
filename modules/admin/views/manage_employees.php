@@ -106,7 +106,7 @@ $flash = $flash ?? null;
                     <tr>
                         <td><?= htmlspecialchars($emp['Emp_Id']) ?></td>
                         <td><?= htmlspecialchars($emp['Emp_Fname'] . ' ' . $emp['Emp_Lname']) ?></td>
-                        <td><?= htmlspecialchars($emp['Emp_Role']) ?></td>
+                        <td><?= htmlspecialchars($emp['Emp_Position']) ?></td>
                         <td><?= htmlspecialchars($emp['Emp_Email']) ?></td>
                         <td><?= htmlspecialchars($emp['Branch_Name']) ?></td>
                         <td><?= htmlspecialchars($emp['Emp_CreatedAt']) ?></td>

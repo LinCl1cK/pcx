@@ -1,7 +1,5 @@
 -- ==========================================================
 -- PCX_DB COMPREHENSIVE SCHEMA COMPILATION
--- Description: Combined schema from 17 SQL source files.
--- Data INSERTS have been excluded for brevity.
 -- ==========================================================
 
 CREATE DATABASE IF NOT EXISTS `pcx_db`;
@@ -11,6 +9,7 @@ USE `pcx_db`;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
 /*!50503 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */; -- Add this line here
 /*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
 /*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
@@ -53,8 +52,8 @@ CREATE TABLE `subcategory` (
 DROP TABLE IF EXISTS `customer`;
 CREATE TABLE `customer` (
   `Cus_Id` char(10) NOT NULL,
-  `Cus_FirstName` varchar(50) NOT NULL,
-  `Cus_LastName` varchar(50) NOT NULL,
+  `Cus_Fname` varchar(50) NOT NULL,
+  `Cus_Lname` varchar(50) NOT NULL,
   `Cus_Email` varchar(255) NOT NULL,
   `Cus_Password` varchar(255) NOT NULL,
   `Cus_ContactNo` varchar(15) NOT NULL,
@@ -68,7 +67,7 @@ CREATE TABLE `customer` (
 DROP TABLE IF EXISTS `promotion`;
 CREATE TABLE `promotion` (
   `Promo_Id` int NOT NULL AUTO_INCREMENT,
-  `Promo_Name` varchar(100) NOT NULL,
+  `Promo_Title` varchar(100) NOT NULL,
   `Promo_Description` text,
   `Promo_Banner` varchar(255) NOT NULL,
   `Promo_Status` enum('Active','Inactive') NOT NULL,
@@ -85,11 +84,11 @@ CREATE TABLE `promotion` (
 DROP TABLE IF EXISTS `employee`;
 CREATE TABLE `employee` (
   `Emp_Id` char(10) NOT NULL,
-  `Emp_FirstName` varchar(50) NOT NULL,
-  `Emp_LastName` varchar(50) NOT NULL,
+  `Emp_Fname` varchar(50) NOT NULL,
+  `Emp_Lname` varchar(50) NOT NULL,
+  `Emp_Email` VARCHAR(255) NOT NULL,
   `Emp_Position` varchar(50) NOT NULL,
   `Emp_BranchId` char(10) NOT NULL,
-  `Emp_Username` varchar(50) NOT NULL,
   `Emp_Password` varchar(255) NOT NULL,
   `Emp_CreatedAt` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`Emp_Id`),
@@ -104,12 +103,12 @@ CREATE TABLE `product` (
   `Prod_Name` varchar(100) NOT NULL,
   `Prod_Brand` varchar(50) NOT NULL,
   `Prod_Price` decimal(10,2) NOT NULL,
-  `Prod_WarrantyMonths` int DEFAULT '0',
+  `Prod_Warranty` int DEFAULT '0',
   `Prod_CatId` char(10) NOT NULL,
   `Prod_Image` varchar(255) DEFAULT NULL,
   `Prod_CreatedAt` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `Prod_UpdatedAt` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `Prod_IsFeatured` tinyint(1) DEFAULT '0',
+  `Prod_Featured` tinyint(1) DEFAULT '0',
   `Prod_Description` text,
   `Prod_Status` enum('Active','Inactive','Discontinued') DEFAULT 'Active',
   PRIMARY KEY (`Prod_Id`),
@@ -142,7 +141,7 @@ CREATE TABLE `inventory` (
   `Inv_BranchId` char(10) NOT NULL,
   `Inv_StockQty` int NOT NULL DEFAULT '0',
   `Inv_ReorderLevel` int NOT NULL DEFAULT '10',
-  `Inv_LastRestocked` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `Inv_LastUpdated` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`Inv_Id`),
   KEY `Inv_ProdId` (`Inv_ProdId`),
   KEY `Inv_BranchId` (`Inv_BranchId`),
@@ -279,10 +278,10 @@ CREATE TABLE `service_ticket` (
 -- Note: This section usually contains Stored Procedures and Functions.
 -- Added as placeholder for the logic found in your specific routines file.
 
-DELIMITER ;;
+-- DELIMITER ;;
 -- Example Routine Placeholder:
 -- CREATE PROCEDURE `YourProcedure`() ... ;;
-DELIMITER ;
+-- DELIMITER ;
 
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;

@@ -1,190 +1,213 @@
 <?php
+// modules/auth/controllers/AuthController.php
 declare(strict_types=1);
 
 require_once __DIR__ . '/../models/AuthModel.php';
-require_once __DIR__ . '/../../catalog/models/ProductModel.php';
+if (file_exists(__DIR__ . '/../../catalog/models/ProductModel.php')) {
+    require_once __DIR__ . '/../../catalog/models/ProductModel.php';
+}
 
 class AuthController extends BaseController {
     private AuthModel $model;
-    private ProductModel $productModel;
 
     public function __construct(PDO $pdo) {
         parent::__construct($pdo);
         $this->model = new AuthModel($pdo);
-        $this->productModel = new ProductModel($pdo);
     }
 
     private static function passwordStrongEnough(string $password): bool {
         return strlen($password) >= 8
-            && preg_match('/[A-Z]/', $password)
-            && preg_match('/[a-z]/', $password)
-            && preg_match('/\d/', $password)
-            && preg_match('/[^A-Za-z0-9]/', $password);
+            && (bool) preg_match('/[A-Z]/', $password)
+            && (bool) preg_match('/[a-z]/', $password)
+            && (bool) preg_match('/\d/',    $password)
+            && (bool) preg_match('/[^A-Za-z0-9]/', $password);
+    }
+
+    private static function jsonOut(array $payload, int $httpStatus = 200): never {
+        http_response_code($httpStatus);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($payload);
+        exit;
     }
 
     public function login(): void {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $loginId = trim((string) ($_POST['login_id'] ?? $_POST['email'] ?? ''));
-            $password = (string) ($_POST['password'] ?? '');
-            $next = trim((string) ($_POST['next'] ?? 'catalog/product/home'));
-
-            if ($loginId === '' || $password === '') {
-                View::render(__DIR__ . '/../views/login.php', ['error' => 'Email and password are required.', 'next' => $next]);
-                return;
-            }
-
-            $customer = $this->model->findCustomerByEmail($loginId);
-            if ($customer && password_verify($password, (string) $customer['Cus_Password'])) {
-                unset($_SESSION['employee']);
-                $_SESSION['user'] = [
-                    'id' => $customer['Cus_Id'],
-                    'role' => 'customer',
-                    'email' => $customer['Cus_Email'],
-                    'name' => trim($customer['Cus_Fname'] . ' ' . $customer['Cus_Lname']),
-                ];
-                $this->redirect(BASE_URL . '/?r=' . urlencode($next));
-                return;
-            }
-
-            $employee = $this->model->findEmployeeByUsername($loginId);
-            if ($employee && password_verify($password, (string) $employee['Emp_PasswordHash'])) {
-                unset($_SESSION['user']);
-                $_SESSION['employee'] = [
-                    'id' => $employee['Emp_Id'],
-                    'name' => trim($employee['Emp_Fname'] . ' ' . $employee['Emp_Lname']),
-                    'role' => $employee['Emp_Role'],
-                    'branch_id' => $employee['Emp_BranchId'],
-                ];
-
-                $role = strtolower((string) $employee['Emp_Role']);
-                if ($role === 'sales representative') {
-                    $this->redirect(BASE_URL . '/?r=verification/verification/index');
-                } elseif ($role === 'technician') {
-                    $this->redirect(BASE_URL . '/?r=service/service/index');
-                } else {
-                    $this->redirect(BASE_URL . '/?r=admin/admin/dashboard');
-                }
-                return;
-            }
-
-            View::render(__DIR__ . '/../views/login.php', ['error' => 'Invalid credentials.', 'next' => $next]);
-            return;
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            self::jsonOut(['success' => false, 'message' => 'Invalid request method.'], 405);
         }
 
-        View::render(__DIR__ . '/../views/login.php', [
-            'next' => trim((string) ($_GET['next'] ?? 'catalog/product/home')),
-        ]);
+        $loginId   = trim($_POST['login_id'] ?? '');
+        $password  = $_POST['password'] ?? '';
+        $loginType = trim($_POST['login_type'] ?? 'customer');
+
+        if ($loginId === '' || $password === '') {
+            self::jsonOut(['success' => false, 'message' => 'Please fill in all fields.']);
+        }
+
+        $user = null;
+        $role = 'user';
+
+        // FIXED: Used if/else structure so employee queries aren't overwritten by customer queries
+        if ($loginType === 'employee') {
+            $user = $this->model->findEmployeeByEmail($loginId);
+            $role = 'employee';
+        } else {
+            $user = $this->model->findCustomerByEmail($loginId);
+            $role = 'user';
+        }
+
+        if (!$user) {
+            self::jsonOut(['success' => false, 'message' => 'Invalid email/username or password.']);
+        }
+
+        // Verify password column names dynamically based on the active role structure
+        $passwordHash = ($role === 'employee') ? $user['Emp_Password'] : $user['Cus_Password'];
+
+        if (!password_verify($password, $passwordHash)) {
+            self::jsonOut(['success' => false, 'message' => 'Invalid email/username or password.']);
+        }
+
+        // FIXED: Setup sessions to accurately line up with customer_header.php logic
+        if ($role === 'employee') {
+            $_SESSION['employee'] = [
+                'id'    => $user['Emp_Id'],
+                'name'  => trim($user['Emp_Fname'] . ' ' . $user['Emp_Lname']),
+                'email' => $user['Emp_Email'],
+                'role'  => $user['Emp_Position']
+            ];
+            
+            self::jsonOut([
+                'success'  => true,
+                'message'  => 'Welcome back, Staff member!',
+                'redirect' => BASE_URL . '/?r=admin/admin/dashboard'
+            ]);
+        } else {
+            $_SESSION['user'] = [
+                'id'    => $user['Cus_Id'],
+                'name'  => trim($user['Cus_Fname'] . ' ' . $user['Cus_Lname']),
+                'email' => $user['Cus_Email'],
+                'role'  => 'customer'
+            ];
+
+            self::jsonOut([
+                'success'  => true,
+                'message'  => 'Login successful!',
+                'redirect' => BASE_URL . '/?r=catalog/product/home'
+            ]);
+        }
     }
 
     public function register(): void {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $fname = trim((string) ($_POST['fname'] ?? ''));
-            $lname = trim((string) ($_POST['lname'] ?? ''));
-            $email = trim((string) ($_POST['email'] ?? ''));
-            $password = (string) ($_POST['password'] ?? '');
-            $confirmPassword = (string) ($_POST['confirm_password'] ?? '');
-            $contact = trim((string) ($_POST['contact'] ?? ''));
-            $address = trim((string) ($_POST['address'] ?? ''));
-
-            if ($fname === '' || $lname === '' || $email === '' || $password === '' || $contact === '' || $address === '') {
-                View::render(__DIR__ . '/../views/register.php', ['error' => 'All required fields must be filled out.']);
-                return;
-            }
-            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                View::render(__DIR__ . '/../views/register.php', ['error' => 'Please enter a valid email address.']);
-                return;
-            }
-            if ($password !== $confirmPassword) {
-                View::render(__DIR__ . '/../views/register.php', ['error' => 'Password confirmation does not match.']);
-                return;
-            }
-            if (!self::passwordStrongEnough($password)) {
-                View::render(__DIR__ . '/../views/register.php', [
-                    'error' => 'Password must be at least 8 characters and include upper, lower, number, and symbol.',
-                ]);
-                return;
-            }
-            if ($this->model->customerEmailExists($email)) {
-                View::render(__DIR__ . '/../views/register.php', ['error' => 'Email is already registered. Please login instead.']);
-                return;
-            }
-
-            $data = [
-                'Cus_Id' => 'CUST-' . str_pad((string) random_int(1, 99999), 5, '0', STR_PAD_LEFT),
-                'Cus_Fname' => $fname,
-                'Cus_Lname' => $lname,
-                'Cus_Email' => $email,
-                'Cus_Password' => password_hash($password, PASSWORD_DEFAULT),
-                'Cus_ContactNo' => $contact,
-                'Cus_Address' => $address,
-            ];
-            if (!$this->model->createCustomer($data)) {
-                View::render(__DIR__ . '/../views/register.php', ['error' => 'Registration failed.']);
-                return;
-            }
-
-            $this->setFlash('success', 'Account created. Please sign in.');
-            $this->redirect(BASE_URL . '/?r=catalog/product/home');
-            return;
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            self::jsonOut(['success' => false, 'message' => 'Invalid request method.'], 405);
         }
 
-        View::render(__DIR__ . '/../views/register.php', []);
+        $fname           = trim((string)($_POST['fname'] ?? ''));
+        $lname           = trim((string)($_POST['lname'] ?? ''));
+        $email           = trim((string)($_POST['email'] ?? ''));
+        $contact         = trim((string)($_POST['contact'] ?? ''));
+        $address         = trim((string)($_POST['address'] ?? ''));
+        $password        = (string)($_POST['password'] ?? '');
+        $confirmPassword = (string)($_POST['confirm_password'] ?? '');
+
+        if ($fname === '' || $lname === '' || $email === '' || $password === '' || $contact === '' || $address === '') {
+            self::jsonOut(['success' => false, 'message' => 'Please complete all required fields.']);
+        }
+
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            self::jsonOut(['success' => false, 'message' => 'Please provide a valid email format.']);
+        }
+
+        if ($password !== $confirmPassword) {
+            self::jsonOut(['success' => false, 'message' => 'Form confirmation passwords do not match.']);
+        }
+
+        if (!self::passwordStrongEnough($password)) {
+            self::jsonOut(['success' => false, 'message' => 'Password is too weak.']);
+        }
+
+        if ($this->model->customerEmailExists($email)) {
+            self::jsonOut(['success' => false, 'message' => 'This email address is already registered.']);
+        }
+
+        $cusId = 'CUS' . str_pad((string)random_int(1, 99999), 5, '0', STR_PAD_LEFT);
+        
+        $payload = [
+            'Cus_Id'        => $cusId,
+            'Cus_Fname'     => $fname,
+            'Cus_Lname'     => $lname,
+            'Cus_Email'     => $email,
+            'Cus_Password'  => password_hash($password, PASSWORD_DEFAULT),
+            'Cus_ContactNo' => $contact,
+            'Cus_Address'   => $address
+        ];
+
+        if ($this->model->createCustomer($payload)) {
+            $_SESSION['user'] = [
+                'id'    => $cusId,
+                'email' => $email,
+                'name'  => $fname . ' ' . $lname
+            ];
+            self::jsonOut(['success' => true, 'redirect' => BASE_URL . '/?r=catalog/product/home']);
+        }
+
+        self::jsonOut(['success' => false, 'message' => 'Database operation error occurred during profile writing.']);
     }
 
     public function account(): void {
-        $this->requireCustomer('auth/auth/account');
-        $customerId = (string) $_SESSION['user']['id'];
-        View::render(__DIR__ . '/../views/account.php', [
-            'pageTitle' => 'My Account - PCX Store',
-            'user' => $_SESSION['user'],
-            'customer' => $this->model->getCustomerById($customerId),
-            'orders' => $this->model->getCustomerOrders($customerId),
-            'categories' => $this->productModel->getAllCategories(),
-            'flash' => $this->pullFlash(),
+        $userId = $_SESSION['user']['id'] ?? null;
+        if (!$userId) {
+            $this->setFlash('danger', 'Please log in to access your dashboard account view.');
+            $this->redirect(BASE_URL . '/?r=catalog/product/home');
+        }
+        $customer = $this->model->findCustomerByEmail($_SESSION['user']['email'] ?? '');
+        $orders   = $this->model->getCustomerOrders($userId);
+        
+        $this->view('auth/views/account.php', [
+            'user'     => $_SESSION['user'] ?? [],
+            'customer' => $customer ?? [],
+            'orders'   => $orders
         ]);
     }
 
     public function updateProfile(): void {
-        $this->requireCustomer('auth/auth/account');
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        $cid = $_SESSION['user']['id'] ?? null;
+        if (!$cid || $_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect(BASE_URL . '/?r=catalog/product/home');
+        }
+
+        $email   = trim((string)($_POST['email'] ?? ''));
+        $fname   = trim((string)($_POST['fname'] ?? ''));
+        $lname   = trim((string)($_POST['lname'] ?? ''));
+        $contact = trim((string)($_POST['contact'] ?? ''));
+        $address = trim((string)($_POST['address'] ?? ''));
+        $newPw   = (string)($_POST['new_password'] ?? '');
+
+        if ($email === '' || $fname === '' || $lname === '') {
+            $this->setFlash('danger', 'All primary profile updates require explicit values.');
             $this->redirect(BASE_URL . '/?r=auth/auth/account');
         }
-        $cid = (string) $_SESSION['user']['id'];
-        $email = trim((string) ($_POST['email'] ?? ''));
-        $data = [
-            'fname' => trim((string) ($_POST['fname'] ?? '')),
-            'lname' => trim((string) ($_POST['lname'] ?? '')),
-            'contact' => trim((string) ($_POST['contact'] ?? '')),
-            'address' => trim((string) ($_POST['address'] ?? '')),
-        ];
-        if ($data['fname'] === '' || $data['lname'] === '' || $email === '' || $data['contact'] === '' || $data['address'] === '') {
-            $this->setFlash('danger', 'All profile fields are required.');
-            $this->redirect(BASE_URL . '/?r=auth/auth/account');
-        }
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $this->setFlash('danger', 'Invalid email.');
-            $this->redirect(BASE_URL . '/?r=auth/auth/account');
-        }
+
         if ($this->model->customerEmailExistsExcept($email, $cid)) {
-            $this->setFlash('danger', 'That email is already used by another account.');
+            $this->setFlash('danger', 'Email is already taken.');
             $this->redirect(BASE_URL . '/?r=auth/auth/account');
         }
-        $pw = (string) ($_POST['new_password'] ?? '');
-        if ($pw !== '') {
-            if (!self::passwordStrongEnough($pw)) {
-                $this->setFlash('danger', 'New password does not meet strength rules.');
+
+        if ($newPw !== '') {
+            if (!self::passwordStrongEnough($newPw)) {
+                $this->setFlash('danger', 'New password is too weak.');
                 $this->redirect(BASE_URL . '/?r=auth/auth/account');
             }
-            $this->db->prepare("UPDATE Customer SET Cus_Password = :p WHERE Cus_Id = :id")->execute([
-                ':p' => password_hash($pw, PASSWORD_DEFAULT),
-                ':id' => $cid,
-            ]);
+            $this->db->prepare("UPDATE customer SET Cus_Password = :p WHERE Cus_Id = :id")
+                     ->execute([':p' => password_hash($newPw, PASSWORD_DEFAULT), ':id' => $cid]);
         }
-        $this->db->prepare("UPDATE Customer SET Cus_Email = :e WHERE Cus_Id = :id")->execute([':e' => $email, ':id' => $cid]);
-        $this->model->updateCustomerProfile($cid, $data);
+
+        $this->db->prepare("UPDATE customer SET Cus_Email = :e WHERE Cus_Id = :id")->execute([':e' => $email, ':id' => $cid]);
+        $this->model->updateCustomerProfile($cid, ['fname' => $fname, 'lname' => $lname, 'contact' => $contact, 'address' => $address]);
+
         $_SESSION['user']['email'] = $email;
-        $_SESSION['user']['name'] = trim($data['fname'] . ' ' . $data['lname']);
-        $this->setFlash('success', 'Profile updated.');
+        $_SESSION['user']['name']  = trim($fname . ' ' . $lname);
+
+        $this->setFlash('success', 'Profile updated successfully.');
         $this->redirect(BASE_URL . '/?r=auth/auth/account');
     }
 
@@ -194,11 +217,11 @@ class AuthController extends BaseController {
     }
 
     public function employeeLogin(): void {
-        $this->redirect(BASE_URL . '/?r=auth/auth/login&next=admin/admin/dashboard');
+        $this->redirect(BASE_URL . '/?r=catalog/product/home&openModal=1&tab=employee');
     }
 
     public function employeeLogout(): void {
         unset($_SESSION['employee']);
-        $this->redirect(BASE_URL . '/?r=auth/auth/login');
+        $this->redirect(BASE_URL . '/?r=catalog/product/home');
     }
 }

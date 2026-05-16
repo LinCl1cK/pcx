@@ -106,7 +106,7 @@ class AdminController extends BaseController {
             $data = [
                 'fname' => trim($_POST['fname'] ?? ''),
                 'lname' => trim($_POST['lname'] ?? ''),
-                'role' => $_POST['role'] ?? '',
+                'position' => $_POST['role'] ?? '',
                 'branch_id' => $_POST['branch_id'] ?? '',
                 'email' => trim($_POST['email'] ?? ''),
                 'password' => $_POST['password'] ?? '',
@@ -162,7 +162,7 @@ class AdminController extends BaseController {
         $data = [
             'fname' => trim($_POST['fname'] ?? ''),
             'lname' => trim($_POST['lname'] ?? ''),
-            'role' => $_POST['role'] ?? '',
+            'position' => $_POST['role'] ?? '',
             'branch_id' => $_POST['branch_id'] ?? '',
             'email' => trim($_POST['email'] ?? ''),
         ];

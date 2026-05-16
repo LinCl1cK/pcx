@@ -29,18 +29,17 @@ $categories = $categories ?? [];
       <div class="collapse navbar-collapse" id="mainNavbar">
         <form class="d-flex flex-grow-1 me-3 justify-content-center" action="<?= BASE_URL ?>" method="get">
           <input type="hidden" name="r" value="catalog/product/list">
-          <div class="input-group pcx-search-bar">
-            <select class="form-select w-auto category-dropdown" name="category">
+          
+          <div class="input-group pcx-search-bar" style="max-width: 700px; height: 50px;">
+            <select class="form-select w-auto category-dropdown" name="category" style="max-width: 150px;">
               <option value="">All Categories</option>
-              <?php foreach ($categories as $category): ?>
-                <option value="<?= htmlspecialchars($category['id']) ?>">
-                  <?= htmlspecialchars($category['name']) ?>
+              <?php foreach ($categories as $cat): ?>
+                <option value="<?= htmlspecialchars($cat['id']) ?>">
+                  <?= htmlspecialchars($cat['name']) ?>
                 </option>
               <?php endforeach; ?>
             </select>
-
             <input class="form-control" type="search" name="q" placeholder="Search for products">
-
             <button class="btn btn-outline-primary px-3" type="submit">
               <i class="bi bi-search"></i>
             </button>
@@ -67,23 +66,28 @@ $categories = $categories ?? [];
             <a class="btn btn-outline-secondary me-2" href="<?= BASE_URL ?>/?r=admin/admin/dashboard">Staff Portal</a>
             <a class="btn btn-outline-danger" href="<?= BASE_URL ?>/?r=auth/auth/employeeLogout">Staff Logout</a>
           <?php else: ?>
-            <button class="btn btn-outline-secondary position-relative me-2" data-bs-toggle="modal" data-bs-target="#loginModal">Sign In</button>
-            <button class="btn btn-dark position-relative me-2" data-bs-toggle="modal" data-bs-target="#registerModal">Register</button>
+            <button class="btn btn-outline-secondary me-2" data-bs-toggle="modal" data-bs-target="#authModal">
+              <i class="bi bi-person" style="font-size: 1.5rem;"></i>
+            </button>
           <?php endif; ?>
+
           <?php if (!$currentEmployee): ?>
           <a href="<?= BASE_URL ?>/?r=wishlist/wishlist/view" class="btn btn-outline-secondary position-relative me-2">
-            <i class="bi bi-heart" style="font-size: 1.6rem;"></i>
+            <i class="bi bi-heart" style="font-size: 1.5rem;"></i>
           </a>
           <a href="<?= BASE_URL ?>/?r=cart/cart/view" class="btn btn-outline-secondary position-relative">
-            <i class="bi bi-cart" style="font-size: 1.6rem;"></i>
+            <i class="bi bi-cart" style="font-size: 1.5rem;"></i>
           </a>
           <?php endif; ?>
         </div>
       </div>
     </div>
   </nav>
+  
   <?php $flash = $flash ?? null; if ($flash): ?>
     <div class="container mt-3">
-      <div class="alert alert-<?= htmlspecialchars((string) $flash['type']) ?> mb-0"><?= htmlspecialchars((string) $flash['message']) ?></div>
+      <div class="alert alert-<?= htmlspecialchars((string) $flash['type']) ?> mb-0">
+        <?= htmlspecialchars((string) $flash['message']) ?>
+      </div>
     </div>
   <?php endif; ?>

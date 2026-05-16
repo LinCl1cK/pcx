@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once dirname(__DIR__) . DIRECTORY_SEPARATOR . 'models' . DIRECTORY_SEPARATOR . 'InventoryModel.php';
+
 class InventoryController extends BaseController {
     private InventoryModel $model;
 
