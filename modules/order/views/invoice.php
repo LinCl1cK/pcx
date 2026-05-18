@@ -37,7 +37,7 @@ require_once __DIR__ . '/../../../app/core/header.php';
           <h5 class="mb-3">Total: PHP <?= number_format((float) $order['Order_TotalAmount'], 2) ?></h5>
         </div>
         <div class="d-flex gap-2">
-          <a href="<?= BASE_URL ?>/?r=payment/payment/pay&id=<?= urlencode((string) $order['Order_Id']) ?>" class="btn btn-dark">Proceed to Payment Simulation</a>
+          <a href="<?= BASE_URL ?>/?r=payment/payment/pay&id=<?= urlencode((string) $order['Order_Id']) ?>" class="btn btn-dark">Submit Payment</a>
           <a href="<?= BASE_URL ?>/?r=order/order/track" class="btn btn-outline-dark">Track Order</a>
         </div>
       </div>

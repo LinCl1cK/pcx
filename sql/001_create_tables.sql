@@ -245,14 +245,17 @@ DROP TABLE IF EXISTS `payment`;
 CREATE TABLE `payment` (
   `Pay_Id` char(10) NOT NULL,
   `Pay_OrderID` char(10) NOT NULL,
-  `Pay_Method` enum('COD','Card', 'GCash', 'Maya','Bank Transfer') NOT NULL,
+  `Pay_CusId` char(10) NOT NULL,
+  `Pay_Method` enum('COD','Cashless') NOT NULL,
   `Pay_PaidAt` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `Pay_Amount` decimal(10,2) NOT NULL,
   `Pay_Status` enum('Pending','Verified','Rejected','Cancelled') NOT NULL,
-  `Pay_Details` varchar(255) DEFAULT NULL,
+  `Pay_GatewayRef` varchar(100) DEFAULT NULL,
   PRIMARY KEY (`Pay_Id`),
   KEY `Pay_OrderID` (`Pay_OrderID`),
+  KEY `Pay_CusId` (`Pay_CusId`),
   CONSTRAINT `payment_ibfk_1` FOREIGN KEY (`Pay_OrderID`) REFERENCES `orders` (`Order_Id`),
+  CONSTRAINT `payment_ibfk_2` FOREIGN KEY (`Pay_CusId`) REFERENCES `customer` (`Cus_Id`),
   CONSTRAINT `payment_chk_1` CHECK ((`Pay_Amount` > 0))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 

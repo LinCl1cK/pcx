@@ -82,6 +82,7 @@ class SalesController extends BaseController {
         View::render(__DIR__ . '/../views/payments.php', [
             'employee' => $_SESSION['employee'],
             'payments' => $this->model->getPayments(),
+            'flash' => $this->pullFlash(),
             'navActive' => 'payments',
             'pageTitle' => 'Payments',
             'pageHeading' => 'Payments',
@@ -108,5 +109,18 @@ class SalesController extends BaseController {
             'pageTitle' => 'Inventory',
             'pageHeading' => 'Inventory',
         ]);
+    }
+
+    public function confirmPayment(): void {
+        $this->requireSales();
+        require_once __DIR__ . '/../../payment/models/PaymentModel.php';
+        $paymentModel = new PaymentModel($this->db);
+        try {
+            $paymentModel->confirmPayment(trim((string) ($_POST['pay_id'] ?? '')));
+            $this->setFlash('success', 'Payment confirmed. Order is now paid.');
+        } catch (Throwable $e) {
+            $this->setFlash('danger', $e->getMessage());
+        }
+        $this->redirect(BASE_URL . '/?r=sales/sales/payments');
     }
 }

@@ -47,10 +47,10 @@ class SalesModel extends BaseModel {
     }
 
     public function getPayments(): array {
-        $sql = "SELECT p.*, o.Order_InvoiceNo, o.Order_Status, c.Cus_Fname, c.Cus_Lname
+        $sql = "SELECT p.Pay_Id, p.Pay_OrderID, p.Pay_CusId, p.Pay_Method, p.Pay_Amount, p.Pay_Status,
+                       p.Pay_GatewayRef, p.Pay_PaidAt, o.Order_InvoiceNo, o.Order_Status
                 FROM Payment p
                 INNER JOIN Orders o ON o.Order_Id = p.Pay_OrderID
-                INNER JOIN Customer c ON c.Cus_Id = o.Order_CusId
                 ORDER BY p.Pay_PaidAt DESC";
         return $this->db->query($sql)->fetchAll();
     }

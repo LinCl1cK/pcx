@@ -3,15 +3,127 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../models/PaymentModel.php';
 require_once __DIR__ . '/../../catalog/models/ProductModel.php';
+require_once __DIR__ . '/../../order/models/OrderModel.php';
 
 class PaymentController extends BaseController {
     private PaymentModel $model;
     private ProductModel $productModel;
+    private OrderModel $orderModel;
 
     public function __construct(PDO $pdo) {
         parent::__construct($pdo);
         $this->model = new PaymentModel($pdo);
         $this->productModel = new ProductModel($pdo);
+        $this->orderModel = new OrderModel($pdo);
+    }
+
+    private function handleIdUpload(string $customerId, bool $required, ?string $existingPath): ?string {
+        $file = $_FILES['id_attachment'] ?? null;
+        $hasUpload = is_array($file) && ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
+        if (!$hasUpload) {
+            if ($required && !$existingPath) {
+                throw new RuntimeException('A valid ID attachment is required for high-value orders.');
+            }
+            return null;
+        }
+        if (($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
+            throw new RuntimeException('ID upload failed. Please try again.');
+        }
+        if ((int) ($file['size'] ?? 0) > 5 * 1024 * 1024) {
+            throw new RuntimeException('ID attachment must be 5 MB or smaller.');
+        }
+
+        $tmp = (string) ($file['tmp_name'] ?? '');
+        $mime = $tmp !== '' ? (string) mime_content_type($tmp) : '';
+        $allowed = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp', 'application/pdf' => 'pdf'];
+        if (!isset($allowed[$mime])) {
+            throw new RuntimeException('Valid ID must be a JPG, PNG, WEBP, or PDF file.');
+        }
+
+        $uploadDir = PCX_ROOT . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'ids';
+        if (!is_dir($uploadDir) && !mkdir($uploadDir, 0775, true) && !is_dir($uploadDir)) {
+            throw new RuntimeException('Unable to prepare ID upload directory.');
+        }
+        $filename = $customerId . '-' . bin2hex(random_bytes(8)) . '.' . $allowed[$mime];
+        $target = $uploadDir . DIRECTORY_SEPARATOR . $filename;
+        if (!move_uploaded_file($tmp, $target)) {
+            throw new RuntimeException('Unable to save ID attachment.');
+        }
+        return 'assets/uploads/ids/' . $filename;
+    }
+
+    private function validatePaymentChoice(string $paymentChoice, float $amount, string $region, string $gatewayRef, float $expectedAmount): array {
+        if (!in_array($paymentChoice, ['COD', 'Cashless'], true)) {
+            throw new RuntimeException('Invalid payment option.');
+        }
+        if (abs($amount - $expectedAmount) > 0.01) {
+            throw new RuntimeException('Payment amount must match the order total.');
+        }
+        if ($paymentChoice === 'COD') {
+            if (!in_array($region, ['Metro Manila', 'Provincial'], true)) {
+                throw new RuntimeException('Invalid COD region.');
+            }
+            $cap = $region === 'Metro Manila' ? 50000.00 : 30000.00;
+            if ($expectedAmount > $cap) {
+                throw new RuntimeException('COD amount exceeds the cap for the selected region.');
+            }
+            return ['method' => 'COD', 'gatewayRef' => null];
+        }
+
+        if ($gatewayRef === '' || strlen($gatewayRef) > 100 || !preg_match('/^[A-Za-z0-9._-]+$/', $gatewayRef)) {
+            throw new RuntimeException('Cashless transaction reference is required and may contain only letters, numbers, dot, dash, or underscore.');
+        }
+        return ['method' => 'Cashless', 'gatewayRef' => $gatewayRef];
+    }
+
+    public function checkout(): void {
+        $this->requireCustomer('order/order/checkout');
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect(BASE_URL . '/?r=order/order/checkout');
+        }
+
+        $customerId = (string) $_SESSION['user']['id'];
+        $shipping = (string) ($_POST['shipping'] ?? 'Delivery');
+        $destinationAddress = trim((string) ($_POST['destination_address'] ?? ''));
+        $contactNo = trim((string) ($_POST['contact_no'] ?? ''));
+        $paymentChoice = (string) ($_POST['payment_option'] ?? 'COD');
+        $region = (string) ($_POST['cod_region'] ?? 'Metro Manila');
+        $gatewayRef = trim((string) ($_POST['gateway_ref'] ?? ''));
+        $amount = (float) ($_POST['payment_amount'] ?? 0);
+
+        try {
+            if (!in_array($shipping, ['Delivery', 'Pickup'], true)) {
+                throw new RuntimeException('Invalid shipping method.');
+            }
+            if ($shipping === 'Pickup' && $destinationAddress === '') {
+                $destinationAddress = 'Pickup at selected PCX branch';
+            }
+            if ($destinationAddress === '') {
+                throw new RuntimeException('Destination address is required.');
+            }
+            if ($contactNo !== '' && strlen($contactNo) > 15) {
+                throw new RuntimeException('Contact number must be 15 characters or fewer.');
+            }
+
+            $expectedAmount = $this->orderModel->calculateCartTotal($customerId);
+            if ($paymentChoice === 'COD') {
+                $amount = $expectedAmount;
+            }
+            $customer = $this->orderModel->getCustomerForCheckout($customerId);
+            $idPath = $this->handleIdUpload($customerId, $expectedAmount >= 50000, $customer['Cus_IdAttachment'] ?? null);
+            if ($idPath !== null) {
+                $this->orderModel->updateCustomerIdAttachment($customerId, $idPath);
+            }
+            $payment = $this->validatePaymentChoice($paymentChoice, $amount, $region, $gatewayRef, $expectedAmount);
+
+            $orderId = $this->orderModel->placeOrderFromCart($customerId, $shipping, $destinationAddress, $contactNo !== '' ? $contactNo : null);
+            $this->model->createPendingPayment($orderId, $customerId, $payment['method'], $expectedAmount, $payment['gatewayRef']);
+            $this->setFlash('success', 'Order placed. Payment is pending staff confirmation.');
+            $this->redirect(BASE_URL . '/?r=order/order/track');
+        } catch (Throwable $e) {
+            $this->setFlash('danger', $e->getMessage());
+            $this->redirect(BASE_URL . '/?r=order/order/checkout');
+        }
     }
 
     public function pay(): void {
@@ -27,13 +139,16 @@ class PaymentController extends BaseController {
         $hasId = !empty($order['Cus_IdAttachment']);
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $method = (string) ($_POST['method'] ?? 'COD');
-            $region = (string) ($_POST['region'] ?? 'Metro Manila');
+            $paymentChoice = (string) ($_POST['payment_option'] ?? 'COD');
+            $region = (string) ($_POST['cod_region'] ?? 'Metro Manila');
+            $gatewayRef = trim((string) ($_POST['gateway_ref'] ?? ''));
             $amount = (float) ($order['Order_TotalAmount'] ?? 0);
-            if (!in_array($method, ['COD', 'GCash', 'Maya', 'Bank Transfer'], true)) {
+            try {
+                $payment = $this->validatePaymentChoice($paymentChoice, (float) ($_POST['payment_amount'] ?? $amount), $region, $gatewayRef, $amount);
+            } catch (Throwable $e) {
                 View::render(__DIR__ . '/../views/pay.php', [
                     'order' => $order,
-                    'error' => 'Invalid payment method.',
+                    'error' => $e->getMessage(),
                     'categories' => $this->productModel->getAllCategories(),
                     'requiresId' => $requiresId,
                     'hasId' => $hasId,
@@ -51,8 +166,8 @@ class PaymentController extends BaseController {
                 return;
             }
             try {
-                $this->model->simulatePayment($orderId, $method, $amount, $region);
-                $this->setFlash('success', 'Payment simulation completed.');
+                $this->model->createPendingPayment($orderId, (string) $_SESSION['user']['id'], $payment['method'], $amount, $payment['gatewayRef']);
+                $this->setFlash('success', 'Payment submitted and pending staff confirmation.');
                 $this->redirect(BASE_URL . '/?r=order/order/track');
             } catch (Throwable $e) {
                 View::render(__DIR__ . '/../views/pay.php', [
@@ -80,10 +195,23 @@ class PaymentController extends BaseController {
         View::render(__DIR__ . '/../views/staff_index.php', [
             'payments' => $payments,
             'employee' => $_SESSION['employee'],
-            'readOnly' => !$this->isAdministrator(),
+            'flash' => $this->pullFlash(),
+            'canConfirm' => $this->isAdministrator() || $this->isSalesRepresentative(),
             'navActive' => 'payments',
             'pageTitle' => 'Payments',
             'pageHeading' => 'Payments',
         ]);
+    }
+
+    public function confirm(): void {
+        $this->requireEmployee(['Administrator', 'Sales Representative']);
+        $paymentId = trim((string) ($_POST['pay_id'] ?? ''));
+        try {
+            $this->model->confirmPayment($paymentId);
+            $this->setFlash('success', 'Payment confirmed. Order is now paid.');
+        } catch (Throwable $e) {
+            $this->setFlash('danger', $e->getMessage());
+        }
+        $this->redirect(BASE_URL . '/?r=payment/payment/index');
     }
 }

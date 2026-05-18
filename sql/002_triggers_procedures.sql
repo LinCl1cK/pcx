@@ -133,16 +133,17 @@ DROP PROCEDURE IF EXISTS sp_ConfirmPayment$$
 CREATE PROCEDURE sp_ConfirmPayment(
     IN p_PayId CHAR(10),
     IN p_OrderId CHAR(10),
-    IN p_Method ENUM('COD','Card','GCash','Maya','Bank Transfer'),
+    IN p_CusId CHAR(10),
+    IN p_Method ENUM('COD','Cashless'),
     IN p_Amount DECIMAL(10,2),
     IN p_Status ENUM('Pending','Verified','Rejected','Cancelled'),
-    IN p_Details VARCHAR(255)
+    IN p_GatewayRef VARCHAR(100)
 )
 BEGIN
     INSERT INTO Payment (
-        Pay_Id, Pay_OrderID, Pay_Method, Pay_PaidAt, Pay_Amount, Pay_Status, Pay_Details
+        Pay_Id, Pay_OrderID, Pay_CusId, Pay_Method, Pay_PaidAt, Pay_Amount, Pay_Status, Pay_GatewayRef
     ) VALUES (
-        p_PayId, p_OrderId, p_Method, NOW(), p_Amount, p_Status, p_Details
+        p_PayId, p_OrderId, p_CusId, p_Method, NOW(), p_Amount, p_Status, p_GatewayRef
     );
 END$$
 

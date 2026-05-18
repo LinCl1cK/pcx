@@ -48,8 +48,8 @@ require_once __DIR__ . '/../../../app/core/header.php';
     <div class="col-lg-5">
       <div class="card border-0 shadow-sm">
         <div class="card-body">
-          <h2 class="h6">Delivery and Verification</h2>
-          <form method="post" action="<?= BASE_URL ?>/?r=order/order/place" enctype="multipart/form-data">
+          <h2 class="h6">Delivery, Verification, and Payment</h2>
+          <form method="post" action="<?= BASE_URL ?>/?r=payment/payment/checkout" enctype="multipart/form-data">
             <div class="mb-2">
               <label class="form-label">Shipping</label>
               <select name="shipping" class="form-select">
@@ -73,6 +73,44 @@ require_once __DIR__ . '/../../../app/core/header.php';
                 <div class="small mt-1">Existing ID on file: <a href="<?= BASE_URL ?>/<?= htmlspecialchars((string) $customer['Cus_IdAttachment']) ?>" target="_blank">View attachment</a></div>
               <?php endif; ?>
             </div>
+            <div class="border-top pt-3 mt-3">
+              <label class="form-label d-block">Payment Option</label>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="payment_option" id="pay_cod" value="COD" checked>
+                <label class="form-check-label" for="pay_cod">COD</label>
+              </div>
+              <div class="form-check mb-2">
+                <input class="form-check-input" type="radio" name="payment_option" id="pay_cashless" value="Cashless">
+                <label class="form-check-label" for="pay_cashless">Cashless simulation</label>
+              </div>
+              <div id="cod_fields" class="mb-2">
+                <label class="form-label">COD Region</label>
+                <select class="form-select" name="cod_region">
+                  <option value="Metro Manila">Metro Manila - up to PHP 50,000</option>
+                  <option value="Provincial">Provincial - up to PHP 30,000</option>
+                </select>
+              </div>
+              <div id="cashless_fields" class="border rounded p-2 mb-2 d-none">
+                <div class="mb-2">
+                  <label class="form-label">Mock Method</label>
+                  <select class="form-select" name="cashless_method">
+                    <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="GCash">GCash</option>
+                    <option value="Maya">Maya</option>
+                  </select>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Transaction Reference</label>
+                  <input class="form-control" name="gateway_ref" maxlength="100" placeholder="e.g. SIM-REF-2026-001">
+                </div>
+                <div>
+                  <label class="form-label">Amount</label>
+                  <input class="form-control" type="number" step="0.01" name="payment_amount" value="<?= htmlspecialchars(number_format($total, 2, '.', '')) ?>">
+                </div>
+                <div class="form-text">Do not enter PINs, CVV, card numbers, wallet passwords, or account credentials.</div>
+              </div>
+              <input type="hidden" name="payment_amount_expected" value="<?= htmlspecialchars(number_format($total, 2, '.', '')) ?>">
+            </div>
             <button class="btn btn-dark w-100" type="submit">Place Order</button>
           </form>
         </div>
@@ -80,4 +118,20 @@ require_once __DIR__ . '/../../../app/core/header.php';
     </div>
   </div>
 </div>
+<script>
+window.addEventListener('load', function () {
+  const cod = document.getElementById('pay_cod');
+  const cashless = document.getElementById('pay_cashless');
+  const codFields = document.getElementById('cod_fields');
+  const cashlessFields = document.getElementById('cashless_fields');
+  function syncPaymentFields() {
+    const isCashless = cashless && cashless.checked;
+    codFields.classList.toggle('d-none', isCashless);
+    cashlessFields.classList.toggle('d-none', !isCashless);
+  }
+  cod && cod.addEventListener('change', syncPaymentFields);
+  cashless && cashless.addEventListener('change', syncPaymentFields);
+  syncPaymentFields();
+});
+</script>
 <?php require_once __DIR__ . '/../../../app/core/footer.php'; ?>

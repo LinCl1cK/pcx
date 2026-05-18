@@ -4,11 +4,11 @@ $error = $error ?? null;
 $requiresId = !empty($requiresId);
 $hasId = !empty($hasId);
 $categories = $categories ?? [];
-$pageTitle = 'Payment Simulation - PCX';
+$pageTitle = 'Payment Submission - PCX';
 require_once __DIR__ . '/../../../app/core/header.php';
 ?>
 <div class="container py-4">
-  <h1 class="h4 mb-3">Payment Simulation</h1>
+  <h1 class="h4 mb-3">Payment Submission</h1>
   <?php if ($error): ?><div class="alert alert-danger"><?= htmlspecialchars((string) $error) ?></div><?php endif; ?>
   <?php if ($order): ?>
     <?php if ($requiresId && !$hasId): ?>
@@ -26,25 +26,31 @@ require_once __DIR__ . '/../../../app/core/header.php';
         <div class="pcx-summary-row"><span>Total Amount</span><strong>PHP <?= number_format((float) $order['Order_TotalAmount'], 2) ?></strong></div>
         <form method="post" action="<?= BASE_URL ?>/?r=payment/payment/pay">
           <input type="hidden" name="order_id" value="<?= htmlspecialchars((string) $order['Order_Id']) ?>">
+          <input type="hidden" name="payment_amount" value="<?= htmlspecialchars(number_format((float) $order['Order_TotalAmount'], 2, '.', '')) ?>">
           <div class="row g-2">
             <div class="col-md-4">
-              <label class="form-label">Method</label>
-              <select name="method" class="form-select">
+              <label class="form-label">Payment Option</label>
+              <select name="payment_option" class="form-select" id="payment_option">
                 <option value="COD">COD</option>
-                <option value="GCash">GCash</option>
-                <option value="Maya">Maya</option>
-                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Cashless">Cashless simulation</option>
               </select>
             </div>
             <div class="col-md-4">
-              <label class="form-label">Region</label>
-              <select name="region" class="form-select">
+              <label class="form-label">COD Region</label>
+              <select name="cod_region" class="form-select">
                 <option value="Metro Manila">Metro Manila</option>
                 <option value="Provincial">Provincial</option>
               </select>
             </div>
+            <div class="col-md-4">
+              <label class="form-label">Gateway Reference</label>
+              <input class="form-control" name="gateway_ref" maxlength="100" placeholder="Cashless only">
+            </div>
             <div class="col-md-4 d-flex align-items-end">
-              <button class="btn btn-dark w-100" type="submit" <?= ($requiresId && !$hasId) ? 'disabled' : '' ?>>Confirm Payment</button>
+              <button class="btn btn-dark w-100" type="submit" <?= ($requiresId && !$hasId) ? 'disabled' : '' ?>>Submit Payment</button>
+            </div>
+            <div class="col-12">
+              <div class="form-text">Cashless simulation stores only method, amount, status, reference, date, order, and customer. Do not enter PINs, CVV, card numbers, or wallet credentials.</div>
             </div>
           </div>
         </form>

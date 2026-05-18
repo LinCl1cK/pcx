@@ -17,55 +17,53 @@ class PaymentModel extends BaseModel {
         return $stmt->fetch() ?: null;
     }
 
-    public function simulatePayment(string $orderId, string $method, float $amount, string $region): string {
+    public function hasAnyPayment(string $orderId): bool {
+        $stmt = $this->db->prepare("SELECT 1 FROM Payment WHERE Pay_OrderID = :oid AND Pay_Status IN ('Pending', 'Verified') LIMIT 1");
+        $stmt->execute([':oid' => $orderId]);
+        return (bool) $stmt->fetchColumn();
+    }
+
+    public function createPendingPayment(string $orderId, string $customerId, string $method, float $amount, ?string $gatewayRef = null): string {
         $this->db->beginTransaction();
         try {
             $order = $this->getOrder($orderId);
             if (!$order) {
                 throw new RuntimeException('Order not found.');
             }
-            if ($order['Order_Status'] !== 'Confirmed') {
-                throw new RuntimeException('Order must be confirmed before payment.');
+            if (!in_array($order['Order_Status'], ['Pending', 'Confirmed'], true)) {
+                throw new RuntimeException('Payment can be submitted only for pending or confirmed orders.');
             }
-            $existing = $this->db->prepare("SELECT 1 FROM Payment WHERE Pay_OrderID = :oid AND Pay_Status = 'Verified' LIMIT 1");
+            if ($order['Order_CusId'] !== $customerId) {
+                throw new RuntimeException('Payment customer does not match the order.');
+            }
+            $existing = $this->db->prepare("SELECT 1 FROM Payment WHERE Pay_OrderID = :oid AND Pay_Status IN ('Pending', 'Verified') LIMIT 1");
             $existing->execute([':oid' => $orderId]);
             if ($existing->fetchColumn()) {
-                throw new RuntimeException('This order already has a verified payment.');
+                throw new RuntimeException('This order already has a payment submitted.');
             }
-            if (!in_array($method, ['COD', 'GCash', 'Maya', 'Bank Transfer'], true)) {
+            if (!in_array($method, ['COD', 'Cashless'], true)) {
                 throw new RuntimeException('Invalid payment method.');
             }
 
-            if ($method === 'COD') {
-                $cap = strtolower($region) === 'metro manila' ? 50000.00 : 30000.00;
-                if ($amount > $cap) {
-                    throw new RuntimeException('COD amount exceeds allowed cap for selected region.');
-                }
+            if ($method === 'Cashless' && !$gatewayRef) {
+                throw new RuntimeException('Cashless payment requires a transaction reference.');
             }
 
             $payId = $this->generateId('P');
             $stmt = $this->db->prepare(
                 "INSERT INTO Payment
-                (Pay_Id, Pay_OrderID, Pay_Method, Pay_PaidAt, Pay_Amount, Pay_Status, Pay_Details)
-                VALUES (:id, :oid, :method, NOW(), :amount, 'Verified', :details)"
+                (Pay_Id, Pay_OrderID, Pay_CusId, Pay_Method, Pay_PaidAt, Pay_Amount, Pay_Status, Pay_GatewayRef)
+                VALUES (:id, :oid, :cid, :method, NOW(), :amount, 'Pending', :gatewayRef)"
             );
             $stmt->execute([
                 ':id' => $payId,
                 ':oid' => $orderId,
+                ':cid' => $customerId,
                 ':method' => $method,
                 ':amount' => $amount,
-                ':details' => $method === 'COD' ? 'COD - ' . $region : 'Simulated ' . $method,
+                ':gatewayRef' => $gatewayRef,
             ]);
 
-            $orderUpdate = $this->db->prepare("UPDATE Orders SET Order_Status = 'Paid' WHERE Order_Id = :id AND Order_Status = 'Confirmed'");
-            $orderUpdate->execute([':id' => $orderId]);
-            if ($orderUpdate->rowCount() !== 1) {
-                $statusStmt = $this->db->prepare("SELECT Order_Status FROM Orders WHERE Order_Id = :id");
-                $statusStmt->execute([':id' => $orderId]);
-                if ($statusStmt->fetchColumn() !== 'Paid') {
-                    throw new RuntimeException('Order could not be marked as paid.');
-                }
-            }
             $this->db->commit();
             return $payId;
         } catch (Throwable $e) {
@@ -76,8 +74,51 @@ class PaymentModel extends BaseModel {
         }
     }
 
+    public function confirmPayment(string $paymentId): void {
+        $this->db->beginTransaction();
+        try {
+            $stmt = $this->db->prepare(
+                "UPDATE Payment
+                 SET Pay_Status = 'Verified'
+                 WHERE Pay_Id = :id AND Pay_Status = 'Pending'"
+            );
+            $stmt->execute([':id' => $paymentId]);
+            if ($stmt->rowCount() !== 1) {
+                throw new RuntimeException('Only pending payments can be confirmed.');
+            }
+
+            $orderStmt = $this->db->prepare(
+                "UPDATE Orders o
+                 INNER JOIN Payment p ON p.Pay_OrderID = o.Order_Id
+                 SET o.Order_Status = 'Paid'
+                 WHERE p.Pay_Id = :id AND o.Order_Status = 'Confirmed'"
+            );
+            $orderStmt->execute([':id' => $paymentId]);
+            if ($orderStmt->rowCount() !== 1) {
+                $check = $this->db->prepare(
+                    "SELECT o.Order_Status
+                     FROM Orders o
+                     INNER JOIN Payment p ON p.Pay_OrderID = o.Order_Id
+                     WHERE p.Pay_Id = :id"
+                );
+                $check->execute([':id' => $paymentId]);
+                if ($check->fetchColumn() !== 'Paid') {
+                    throw new RuntimeException('Payment verified, but order could not be marked paid.');
+                }
+            }
+
+            $this->db->commit();
+        } catch (Throwable $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $e;
+        }
+    }
+
     public function listAllWithOrders(): array {
-        $sql = "SELECT p.*, o.Order_InvoiceNo, o.Order_Status, o.Order_CusId
+        $sql = "SELECT p.Pay_Id, p.Pay_OrderID, p.Pay_CusId, p.Pay_Method, p.Pay_Amount, p.Pay_Status,
+                       p.Pay_GatewayRef, p.Pay_PaidAt, o.Order_InvoiceNo, o.Order_Status
                 FROM Payment p
                 INNER JOIN Orders o ON o.Order_Id = p.Pay_OrderID
                 ORDER BY p.Pay_PaidAt DESC";

@@ -152,6 +152,13 @@ try {
     $stmt = $pdo->prepare("INSERT INTO inventory (Inv_Id, Inv_ProdId, Inv_BranchId, Inv_StockQty, Inv_ReorderLevel) VALUES (?, ?, ?, ?, ?)");
     foreach ($inventory as $inv) $stmt->execute($inv);
 
+    echo "<h3>Populating Customers...</h3>";
+    $customer = [
+        ['CUS26179', 'Lin', 'Mar', 'lin.mar@gmail.com', password_hash('L1nm@rrr', PASSWORD_DEFAULT), '09638730869', 'Hernan Cortes, Mandaue City']
+    ];
+    $stmt = $pdo->prepare("INSERT INTO customer (Cus_Id, Cus_Fname, Cus_Lname, Cus_Email, Cus_Password, Cus_ContactNo, Cus_Address) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    foreach ($customer as $c) $stmt->execute($c);
+
     echo "<h2 style='color: green;'>Full Integration Success!</h2>";
 
 } catch (PDOException $e) {
