@@ -16,6 +16,7 @@ class FulfillmentController extends BaseController {
         View::render(__DIR__ . '/../views/index.php', [
             'orders' => $this->model->getPaidOrders(),
             'employee' => $_SESSION['employee'],
+            'flash' => $this->pullFlash(),
             'navActive' => 'fulfillment',
             'pageTitle' => 'Fulfillment',
             'pageHeading' => 'Fulfillment queue',
@@ -25,8 +26,12 @@ class FulfillmentController extends BaseController {
     public function complete(): void {
         $this->requireAdministrator();
         $orderId = trim((string) ($_POST['order_id'] ?? ''));
-        $this->model->completeOrder($orderId);
-        $this->setFlash('success', 'Order marked completed.');
+        try {
+            $this->model->completeOrder($orderId);
+            $this->setFlash('success', 'Order marked completed.');
+        } catch (Throwable $e) {
+            $this->setFlash('danger', $e->getMessage());
+        }
         $this->redirect(BASE_URL . '/?r=fulfillment/fulfillment/index');
     }
 }

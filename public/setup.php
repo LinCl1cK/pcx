@@ -152,12 +152,38 @@ try {
     $stmt = $pdo->prepare("INSERT INTO inventory (Inv_Id, Inv_ProdId, Inv_BranchId, Inv_StockQty, Inv_ReorderLevel) VALUES (?, ?, ?, ?, ?)");
     foreach ($inventory as $inv) $stmt->execute($inv);
 
+    // 9. CUSTOMER (Distributed with partial stocks)
     echo "<h3>Populating Customers...</h3>";
     $customer = [
         ['CUS26179', 'Lin', 'Mar', 'lin.mar@gmail.com', password_hash('L1nm@rrr', PASSWORD_DEFAULT), '09638730869', 'Hernan Cortes, Mandaue City']
     ];
     $stmt = $pdo->prepare("INSERT INTO customer (Cus_Id, Cus_Fname, Cus_Lname, Cus_Email, Cus_Password, Cus_ContactNo, Cus_Address) VALUES (?, ?, ?, ?, ?, ?, ?)");
     foreach ($customer as $c) $stmt->execute($c);
+
+    // 10. TRIGGERS AND STORED PROCEDURES
+    echo "<h2>Step 3: Creating Triggers and Stored Procedures...</h2>";
+    $sqlPath = __DIR__ . '/../sql/002_triggers_procedures.sql';
+
+    if (file_exists($sqlPath)) {
+        $sqlContent = file_get_contents($sqlPath);
+        
+        // 1. Strip out client-side DELIMITER lines entirely
+        $sqlContent = preg_replace('/DELIMITER\s+\S+/i', '', $sqlContent);
+        
+        // 2. Break statements apart using the custom '$$' delimiter
+        $statements = explode('$$', $sqlContent);
+        
+        foreach ($statements as $query) {
+            $trimmedQuery = trim($query);
+            if (!empty($trimmedQuery)) {
+                // Execute each individual trigger or procedure definition
+                $pdo->exec($trimmedQuery);
+            }
+        }
+        echo "<p style='color:green;'>Triggers and procedures successfully injected!</p>";
+    } else {
+        die("Setup failed: Triggers file not found at " . htmlspecialchars($sqlPath));
+    }
 
     echo "<h2 style='color: green;'>Full Integration Success!</h2>";
 

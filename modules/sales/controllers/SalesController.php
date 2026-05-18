@@ -94,6 +94,7 @@ class SalesController extends BaseController {
         View::render(__DIR__ . '/../views/fulfillment.php', [
             'employee' => $_SESSION['employee'],
             'orders' => $this->model->getPaidOrders(),
+            'flash' => $this->pullFlash(),
             'navActive' => 'fulfillment',
             'pageTitle' => 'Fulfillment',
             'pageHeading' => 'Fulfillment queue',
@@ -116,11 +117,16 @@ class SalesController extends BaseController {
         require_once __DIR__ . '/../../payment/models/PaymentModel.php';
         $paymentModel = new PaymentModel($this->db);
         try {
-            $paymentModel->confirmPayment(trim((string) ($_POST['pay_id'] ?? '')));
-            $this->setFlash('success', 'Payment confirmed. Order is now paid.');
+            $result = $paymentModel->confirmPayment(trim((string) ($_POST['pay_id'] ?? '')));
+            $message = ($result['method'] ?? '') === 'COD'
+                ? 'COD payment confirmed after fulfillment check.'
+                : 'Payment confirmed. Order is now paid.';
+            $this->setFlash('success', $message);
         } catch (Throwable $e) {
             $this->setFlash('danger', $e->getMessage());
         }
-        $this->redirect(BASE_URL . '/?r=sales/sales/payments');
+        $next = (string) ($_POST['next'] ?? 'payments');
+        $route = $next === 'fulfillment' ? 'fulfillment' : 'payments';
+        $this->redirect(BASE_URL . '/?r=sales/sales/' . $route);
     }
 }

@@ -26,11 +26,17 @@ require dirname(__DIR__, 3) . '/app/views/layouts/employee_begin.php';
           <td><?= htmlspecialchars((string) ($payment['Pay_GatewayRef'] ?? '-')) ?></td>
           <td><small><?= htmlspecialchars((string) $payment['Pay_PaidAt']) ?></small></td>
           <td>
-            <?php if ($payment['Pay_Status'] === 'Pending'): ?>
+            <?php
+              $canConfirmCashless = $payment['Pay_Status'] === 'Pending' && $payment['Pay_Method'] !== 'COD' && $payment['Order_Status'] === 'Confirmed';
+              $canConfirmCod = $payment['Pay_Status'] === 'Pending' && $payment['Pay_Method'] === 'COD' && $payment['Order_Status'] === 'Completed';
+            ?>
+            <?php if ($canConfirmCashless || $canConfirmCod): ?>
               <form method="post" action="<?= BASE_URL ?>/?r=sales/sales/confirmPayment">
                 <input type="hidden" name="pay_id" value="<?= htmlspecialchars((string) $payment['Pay_Id']) ?>">
-                <button class="btn btn-sm btn-dark" type="submit">Confirm Payment</button>
+                <button class="btn btn-sm btn-dark" type="submit"><?= $canConfirmCod ? 'Confirm COD Payment' : 'Confirm Payment' ?></button>
               </form>
+            <?php elseif ($payment['Pay_Status'] === 'Pending' && $payment['Pay_Method'] === 'COD'): ?>
+              <span class="text-muted small">Awaiting fulfillment</span>
             <?php else: ?>
               <span class="text-muted small">No action</span>
             <?php endif; ?>

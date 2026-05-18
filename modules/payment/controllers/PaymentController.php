@@ -207,8 +207,11 @@ class PaymentController extends BaseController {
         $this->requireEmployee(['Administrator', 'Sales Representative']);
         $paymentId = trim((string) ($_POST['pay_id'] ?? ''));
         try {
-            $this->model->confirmPayment($paymentId);
-            $this->setFlash('success', 'Payment confirmed. Order is now paid.');
+            $result = $this->model->confirmPayment($paymentId, $this->isSalesRepresentative());
+            $message = ($result['method'] ?? '') === 'COD'
+                ? 'COD payment confirmed after fulfillment check.'
+                : 'Payment confirmed. Order is now paid.';
+            $this->setFlash('success', $message);
         } catch (Throwable $e) {
             $this->setFlash('danger', $e->getMessage());
         }

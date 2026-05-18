@@ -19,7 +19,7 @@ FOR EACH ROW
 BEGIN
     IF OLD.Order_Status <> NEW.Order_Status AND NOT (
         (OLD.Order_Status = 'Pending' AND NEW.Order_Status IN ('Confirmed', 'Cancelled')) OR
-        (OLD.Order_Status = 'Confirmed' AND NEW.Order_Status IN ('Paid', 'Cancelled')) OR
+        (OLD.Order_Status = 'Confirmed' AND NEW.Order_Status IN ('Paid', 'Completed', 'Cancelled')) OR
         (OLD.Order_Status = 'Paid' AND NEW.Order_Status = 'Completed')
     ) THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid order status transition.';
@@ -67,7 +67,8 @@ CREATE TRIGGER trg_Inventory_AutoDeduct
 AFTER UPDATE ON Orders
 FOR EACH ROW
 BEGIN
-    IF NEW.Order_Status = 'Paid' AND OLD.Order_Status <> 'Paid' THEN
+    IF (NEW.Order_Status = 'Paid' AND OLD.Order_Status <> 'Paid')
+       OR (NEW.Order_Status = 'Completed' AND OLD.Order_Status = 'Confirmed') THEN
         UPDATE Inventory i
         INNER JOIN Order_Item oi ON oi.Item_ProdId = i.Inv_ProdId
         SET i.Inv_StockQty = i.Inv_StockQty - oi.Item_Quantity,

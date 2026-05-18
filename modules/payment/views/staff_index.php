@@ -3,6 +3,7 @@ $payments = $payments ?? [];
 $flash = $flash ?? null;
 $canConfirm = !empty($canConfirm);
 $employee = $employee ?? [];
+$isSalesRepresentative = strtolower((string) ($employee['role'] ?? '')) === 'sales representative';
 $navActive = $navActive ?? 'payments';
 $pageTitle = $pageTitle ?? 'Payments';
 $pageHeading = $pageHeading ?? 'Payments';
@@ -40,11 +41,17 @@ require dirname(__DIR__, 3) . '/app/views/layouts/employee_begin.php';
           <td><small><?= htmlspecialchars((string) $p['Pay_PaidAt']) ?></small></td>
           <?php if ($canConfirm): ?>
             <td>
-              <?php if ($p['Pay_Status'] === 'Pending'): ?>
+              <?php
+                $canConfirmCashless = $p['Pay_Status'] === 'Pending' && $p['Pay_Method'] !== 'COD' && $p['Order_Status'] === 'Confirmed';
+                $canConfirmCod = $isSalesRepresentative && $p['Pay_Status'] === 'Pending' && $p['Pay_Method'] === 'COD' && $p['Order_Status'] === 'Completed';
+              ?>
+              <?php if ($canConfirmCashless || $canConfirmCod): ?>
                 <form method="post" action="<?= BASE_URL ?>/?r=payment/payment/confirm">
                   <input type="hidden" name="pay_id" value="<?= htmlspecialchars((string) $p['Pay_Id']) ?>">
-                  <button class="btn btn-sm btn-dark" type="submit">Confirm Payment</button>
+                  <button class="btn btn-sm btn-dark" type="submit"><?= $canConfirmCod ? 'Confirm COD Payment' : 'Confirm Payment' ?></button>
                 </form>
+              <?php elseif ($p['Pay_Status'] === 'Pending' && $p['Pay_Method'] === 'COD'): ?>
+                <span class="text-muted small">Awaiting fulfillment</span>
               <?php else: ?>
                 <span class="text-muted small">No action</span>
               <?php endif; ?>

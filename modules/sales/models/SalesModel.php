@@ -56,10 +56,12 @@ class SalesModel extends BaseModel {
     }
 
     public function getPaidOrders(): array {
-        $sql = "SELECT o.*, c.Cus_Fname, c.Cus_Lname
+        $sql = "SELECT o.*, c.Cus_Fname, c.Cus_Lname, p.Pay_Id, p.Pay_Method, p.Pay_Status
                 FROM Orders o
                 INNER JOIN Customer c ON c.Cus_Id = o.Order_CusId
+                LEFT JOIN Payment p ON p.Pay_OrderID = o.Order_Id
                 WHERE o.Order_Status = 'Paid'
+                   OR (o.Order_Status = 'Completed' AND p.Pay_Method = 'COD' AND p.Pay_Status = 'Pending')
                 ORDER BY o.Order_Date ASC";
         return $this->db->query($sql)->fetchAll();
     }

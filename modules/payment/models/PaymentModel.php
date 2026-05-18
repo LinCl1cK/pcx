@@ -74,9 +74,35 @@ class PaymentModel extends BaseModel {
         }
     }
 
-    public function confirmPayment(string $paymentId): void {
+    public function confirmPayment(string $paymentId, bool $allowCod = true): array {
         $this->db->beginTransaction();
         try {
+            $paymentStmt = $this->db->prepare(
+                "SELECT p.Pay_Id, p.Pay_Method, p.Pay_Status, o.Order_Id, o.Order_Status
+                 FROM Payment p
+                 INNER JOIN Orders o ON o.Order_Id = p.Pay_OrderID
+                 WHERE p.Pay_Id = :id
+                 LIMIT 1
+                 FOR UPDATE"
+            );
+            $paymentStmt->execute([':id' => $paymentId]);
+            $payment = $paymentStmt->fetch();
+            if (!$payment || $payment['Pay_Status'] !== 'Pending') {
+                throw new RuntimeException('Only pending payments can be confirmed.');
+            }
+
+            if ($payment['Pay_Method'] === 'COD') {
+                if (!$allowCod) {
+                    throw new RuntimeException('COD payment must be confirmed by a sales representative.');
+                }
+                if ($payment['Order_Status'] !== 'Completed') {
+                    throw new RuntimeException('COD payment can be confirmed only after admin marks fulfillment completed.');
+                }
+            }
+            if ($payment['Pay_Method'] !== 'COD' && $payment['Order_Status'] !== 'Confirmed') {
+                throw new RuntimeException('Cashless payment can be confirmed only for confirmed orders.');
+            }
+
             $stmt = $this->db->prepare(
                 "UPDATE Payment
                  SET Pay_Status = 'Verified'
@@ -87,27 +113,33 @@ class PaymentModel extends BaseModel {
                 throw new RuntimeException('Only pending payments can be confirmed.');
             }
 
-            $orderStmt = $this->db->prepare(
-                "UPDATE Orders o
-                 INNER JOIN Payment p ON p.Pay_OrderID = o.Order_Id
-                 SET o.Order_Status = 'Paid'
-                 WHERE p.Pay_Id = :id AND o.Order_Status = 'Confirmed'"
-            );
-            $orderStmt->execute([':id' => $paymentId]);
-            if ($orderStmt->rowCount() !== 1) {
-                $check = $this->db->prepare(
-                    "SELECT o.Order_Status
-                     FROM Orders o
+            if ($payment['Pay_Method'] !== 'COD') {
+                $orderStmt = $this->db->prepare(
+                    "UPDATE Orders o
                      INNER JOIN Payment p ON p.Pay_OrderID = o.Order_Id
-                     WHERE p.Pay_Id = :id"
+                     SET o.Order_Status = 'Paid'
+                     WHERE p.Pay_Id = :id AND o.Order_Status = 'Confirmed'"
                 );
-                $check->execute([':id' => $paymentId]);
-                if ($check->fetchColumn() !== 'Paid') {
-                    throw new RuntimeException('Payment verified, but order could not be marked paid.');
+                $orderStmt->execute([':id' => $paymentId]);
+                if ($orderStmt->rowCount() !== 1) {
+                    $check = $this->db->prepare(
+                        "SELECT o.Order_Status
+                         FROM Orders o
+                         INNER JOIN Payment p ON p.Pay_OrderID = o.Order_Id
+                         WHERE p.Pay_Id = :id"
+                    );
+                    $check->execute([':id' => $paymentId]);
+                    if ($check->fetchColumn() !== 'Paid') {
+                        throw new RuntimeException('Payment verified, but order could not be marked paid.');
+                    }
                 }
             }
 
             $this->db->commit();
+            return [
+                'method' => (string) $payment['Pay_Method'],
+                'order_status' => $payment['Pay_Method'] === 'COD' ? 'Completed' : 'Paid',
+            ];
         } catch (Throwable $e) {
             if ($this->db->inTransaction()) {
                 $this->db->rollBack();
