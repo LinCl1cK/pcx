@@ -79,12 +79,14 @@ if ($currentEmployee) {
           <?php endif; ?>
 
           <?php if (!$currentEmployee): ?>
-          <a href="<?= BASE_URL ?>/?r=wishlist/wishlist/view" class="btn btn-outline-secondary position-relative me-2">
-            <i class="bi bi-heart" style="font-size: 1.5rem;"></i>
-          </a>
-          <a href="<?= BASE_URL ?>/?r=cart/cart/view" class="btn btn-outline-secondary position-relative">
-            <i class="bi bi-cart" style="font-size: 1.5rem;"></i>
-          </a>
+            <?php if ($currentUser): ?>
+              <a href="<?= BASE_URL ?>/?r=wishlist/wishlist/view" class="btn btn-outline-secondary position-relative me-2">
+                <i class="bi bi-heart" style="font-size: 1.5rem;"></i>
+              </a>
+              <a href="<?= BASE_URL ?>/?r=cart/cart/view" class="btn btn-outline-secondary position-relative">
+                <i class="bi bi-cart" style="font-size: 1.5rem;"></i>
+              </a>
+            <?php endif; ?>
           <?php endif; ?>
         </div>
       </div>

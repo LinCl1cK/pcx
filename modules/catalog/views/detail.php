@@ -26,9 +26,6 @@ $flash = $flash ?? null;
   ?>
 
   <div class="container py-4">
-    <?php if ($flash): ?>
-      <div class="alert alert-<?= ($flash['type'] ?? '') === 'success' ? 'success' : 'danger' ?>"><?= htmlspecialchars((string) ($flash['message'] ?? '')) ?></div>
-    <?php endif; ?>
     <a href="<?= BASE_URL ?>/?r=catalog/product/list" class="btn btn-outline-secondary mb-3">Back to Products</a>
     <?php if (!$product): ?>
       <div class="alert alert-warning">Product not found.</div>

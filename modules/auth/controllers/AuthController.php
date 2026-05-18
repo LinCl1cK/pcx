@@ -35,41 +35,45 @@ class AuthController extends BaseController {
             self::jsonOut(['success' => false, 'message' => 'Invalid request method.'], 405);
         }
 
-        $loginId   = trim($_POST['login_id'] ?? '');
-        $password  = $_POST['password'] ?? '';
-        $loginType = trim($_POST['login_type'] ?? 'customer');
+        $loginId  = trim($_POST['login_id'] ?? '');
+        $password = $_POST['password'] ?? '';
 
         if ($loginId === '' || $password === '') {
             self::jsonOut(['success' => false, 'message' => 'Please fill in all fields.']);
         }
 
         $user = null;
-        $role = 'user';
+        $role = null;
 
-        // FIXED: Used if/else structure so employee queries aren't overwritten by customer queries
-        if ($loginType === 'employee') {
-            $user = $this->model->findEmployeeByEmail($loginId);
+        // 1. Try to find an Employee matching the credentials first
+        $user = $this->model->findEmployeeByEmail($loginId);
+        if ($user) {
             $role = 'employee';
         } else {
+            // 2. Fallback: Try to find a Customer if no employee record was matched
             $user = $this->model->findCustomerByEmail($loginId);
-            $role = 'user';
+            if ($user) {
+                $role = 'customer';
+            }
         }
 
+        // If the identifier doesn't exist in either database table
         if (!$user) {
             self::jsonOut(['success' => false, 'message' => 'Invalid email/username or password.']);
         }
 
-        // Verify password column names dynamically based on the active role structure
+        // 3. Verify password columns dynamically based on the detected database role
         $passwordHash = ($role === 'employee') ? $user['Emp_Password'] : $user['Cus_Password'];
 
         if (!password_verify($password, $passwordHash)) {
             self::jsonOut(['success' => false, 'message' => 'Invalid email/username or password.']);
         }
 
-        // FIXED: Setup sessions to accurately line up with customer_header.php logic
+        // 4. Session preparation and routing
         if ($role === 'employee') {
             $employeeRole = $this->normalizeRole((string) $user['Emp_Position']);
             $redirect = BASE_URL . '/?r=admin/admin/dashboard';
+            
             if ($employeeRole === 'sales representative') {
                 $redirect = BASE_URL . '/?r=sales/sales/dashboard';
             } elseif ($employeeRole === 'technician') {
@@ -96,14 +100,17 @@ class AuthController extends BaseController {
                 'role'  => 'customer'
             ];
 
+            // Capture target path parameter if passed from form submission redirection
+            $next = trim($_POST['next'] ?? 'catalog/product/home');
+
             self::jsonOut([
                 'success'  => true,
                 'message'  => 'Login successful!',
-                'redirect' => BASE_URL . '/?r=catalog/product/home'
+                'redirect' => BASE_URL . '/?r=' . $next
             ]);
         }
     }
-
+    
     public function register(): void {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             self::jsonOut(['success' => false, 'message' => 'Invalid request method.'], 405);

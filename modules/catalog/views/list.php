@@ -27,9 +27,6 @@ $flash = $flash ?? null;
 ?>
 <body>
   <div class="container py-4">
-    <?php if ($flash): ?>
-      <div class="alert alert-<?= ($flash['type'] ?? '') === 'success' ? 'success' : 'danger' ?>"><?= htmlspecialchars((string) ($flash['message'] ?? '')) ?></div>
-    <?php endif; ?>
     <form method="get" action="<?= BASE_URL ?>" class="row g-2 mb-4">
       <input type="hidden" name="r" value="catalog/product/list">
       <div class="col-md-5">

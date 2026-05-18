@@ -28,11 +28,6 @@ $flash = $flash ?? null;
   ?>
 
   <div class="container-fluid mt-3">
-    <?php if ($flash): ?>
-      <div class="container">
-        <div class="alert alert-<?= ($flash['type'] ?? '') === 'success' ? 'success' : 'danger' ?>"><?= htmlspecialchars((string) ($flash['message'] ?? '')) ?></div>
-      </div>
-    <?php endif; ?>
     <div id="promoCarousel" class="carousel slide" data-bs-ride="carousel">
       <div class="carousel-inner">
         <?php if (!empty($promotions)): ?>

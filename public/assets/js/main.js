@@ -1,24 +1,75 @@
-// assets/js/main.js - Pure Hybrid Execution Engine
+// assets/js/main.js - Unified Authentication Notification Pipeline
 document.addEventListener('DOMContentLoaded', function () {
 
-    // 1. Unified AJAX Event Middleware Form Submit Handler
-    const handleFormSubmit = (formId, alertId) => {
-        const form = document.getElementById(formId);
-        const alertBox = document.getElementById(alertId);
+    /**
+     * Helper function to spawn a dynamic Bootstrap Toast Notification on the fly
+     * Matches the precise look and feel defined in customer_header.php
+     */
+    const showToastNotification = (type, message) => {
+        // Create a unique wrapper container for toasts if it doesn't exist yet
+        let toastContainer = document.querySelector('.toast-container');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+            toastContainer.style.zIndex = '1100';
+            toastContainer.style.marginTop = '85px';
+            document.body.appendChild(toastContainer);
+        }
 
-        if (!form || !alertBox) return;
+        const bgClass = type === 'danger' ? 'bg-danger' : (type === 'success' ? 'bg-success' : 'bg-dark');
+        const iconClass = type === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill';
+
+        const toastHtml = `
+            <div class="toast align-items-center text-white ${bgClass} border-0 shadow" role="alert" aria-live=\"assertive\" aria-atomic=\"true\" data-bs-delay=\"4000\">
+                <div class="d-flex">
+                    <div class="toast-body d-flex align-items-center gap-2">
+                        <i class="bi ${iconClass} fs-5"></i>
+                        <div>${message}</div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        `;
+
+        // Turn the string markup into a DOM element node
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = toastHtml.trim();
+        const toastElement = tempDiv.firstChild;
+
+        toastContainer.appendChild(toastElement);
+
+        // Initialize and fire the Bootstrap Toast Instance
+        if (typeof bootstrap !== 'undefined') {
+            const bsToast = new bootstrap.Toast(toastElement);
+            bsToast.show();
+
+            // Automatically clean up the element from the DOM after it hides
+            toastElement.addEventListener('hidden.bs.toast', () => {
+                toastElement.remove();
+            });
+        } else {
+            // Fallback console log if bootstrap library hasn't loaded yet
+            console.warn('Bootstrap is missing. Fallback fallback message:', message);
+        }
+    };
+
+    // 1. AJAX Form Submission Middleware Interceptor
+    const handleFormSubmit = (formId, fallbackAlertId) => {
+        const form = document.getElementById(formId);
+        const fallbackAlert = document.getElementById(fallbackAlertId);
+
+        if (!form) return;
 
         form.addEventListener('submit', function (e) {
             e.preventDefault();
-            alertBox.classList.add('d-none'); // Clear existing error state
+            if (fallbackAlert) fallbackAlert.classList.add('d-none');
 
-            // Real-time local verification mapping for registration matching fields
+            // Registration specific client side password check validation loop
             if (formId === 'ajaxRegisterForm') {
                 const pass = form.querySelector('input[name="password"]').value;
                 const confirm = form.querySelector('input[name="confirm_password"]').value;
                 if (pass !== confirm) {
-                    alertBox.textContent = "Validation mismatch: Passwords do not match!";
-                    alertBox.classList.remove('d-none');
+                    showToastNotification('danger', 'Validation mismatch: Passwords do not match!');
                     return;
                 }
             }
@@ -31,47 +82,38 @@ document.addEventListener('DOMContentLoaded', function () {
             })
             .then(response => {
                 if (!response.ok) {
-                    throw new Error('Server returned unsafe response boundaries.');
+                    throw new Error('Server returned an unstable response code boundary.');
                 }
                 return response.json();
             })
             .then(data => {
+                // FIXED: Changed data.status === 'success' to data.success
                 if (data.success) {
-                    // Forward context directly using structural destination maps
+                    // Redirects directly to the path sent back dynamically by the controller logic
                     window.location.href = data.redirect || window.BASE_URL || '/';
                 } else {
-                    alertBox.textContent = data.message || 'An unhandled authentication event failed.';
-                    alertBox.classList.remove('d-none');
+                    // Spawn a dynamic toast matching your notification styling engine
+                    showToastNotification('danger', data.message || 'Authentication parameters mismatch.');
                 }
             })
             .catch(error => {
-                console.error('Error Exception Pipeline:', error);
-                alertBox.textContent = 'A transmission or validation structure error occurred.';
-                alertBox.classList.remove('d-none');
+                console.error('Submission processing error:', error);
+                showToastNotification('danger', 'A system transmission or verification structure error occurred.');
             });
         });
     };
 
-    // Instantiate form intercept trackers matching the target element structures
+    // Instantiate form submission structural intercept hooks
     handleFormSubmit('ajaxLoginForm', 'loginAlert');
     handleFormSubmit('ajaxRegisterForm', 'registerAlert');
-    handleFormSubmit('ajaxEmployeeForm', 'employeeAlert');
 
-    // 2. URL Query State Router Layer (Brought in from Group 2 parameters)
+    // 2. URL Query State Router Layer
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('openModal') === '1') {
         const authModalEl = document.getElementById('authModal');
         if (authModalEl) {
             const bootstrapModal = new bootstrap.Modal(authModalEl);
             bootstrapModal.show();
-            
-            // Switch tab focus seamlessly if employee query string is appended
-            if (urlParams.get('tab') === 'employee') {
-                const empTabBtn = document.getElementById('emp-tab-btn');
-                if (empTabBtn) {
-                    empTabBtn.click();
-                }
-            }
         }
     }
 });
