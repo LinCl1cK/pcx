@@ -24,11 +24,6 @@ $flash = $flash ?? null;
     $basePath = dirname(__DIR__, 2); // This gets C:\xampp\htdocs\pcx
     require_once $basePath . '/app/views/layouts/customer_header.php';
   ?>
-  <?php if ($flash): ?>
-    <div class="container mt-3">
-      <div class="alert alert-<?= htmlspecialchars((string) $flash['type']) ?> mb-0"><?= htmlspecialchars((string) $flash['message']) ?></div>
-    </div>
-  <?php endif; ?>
 
   <div class="container py-4">
     <a href="<?= BASE_URL ?>/?r=catalog/product/list" class="btn btn-outline-secondary mb-3">Back to Products</a>

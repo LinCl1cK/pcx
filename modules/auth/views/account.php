@@ -59,9 +59,6 @@ require_once __DIR__ . '/../../../app/core/header.php';
         <div class="card shadow-sm border-0">
           <div class="card-body p-4">
             <h2 class="h5 mb-3">Transaction Records</h2>
-            <?php $flash = $flash ?? null; if ($flash): ?>
-              <div class="alert alert-<?= htmlspecialchars((string) $flash['type']) ?>"><?= htmlspecialchars((string) $flash['message']) ?></div>
-            <?php endif; ?>
             <?php if (empty($orders)): ?>
               <div class="alert alert-info mb-0">No transaction records yet.</div>
             <?php else: ?>

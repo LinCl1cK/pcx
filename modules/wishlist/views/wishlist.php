@@ -10,10 +10,6 @@ require_once __DIR__ . '/../../../app/core/header.php';
     <h1 class="h3 mb-3">Wishlist</h1>
     <p class="text-muted mb-4">Signed in as <?= htmlspecialchars((string) ($user['email'] ?? '')) ?></p>
 
-    <?php if ($flash): ?>
-      <div class="alert alert-<?= htmlspecialchars((string) $flash['type']) ?>"><?= htmlspecialchars((string) $flash['message']) ?></div>
-    <?php endif; ?>
-
     <?php if (empty($items)): ?>
       <div class="card border-0 shadow-sm">
         <div class="card-body">

@@ -84,10 +84,39 @@ $categories = $categories ?? [];
     </div>
   </nav>
   
-  <?php $flash = $flash ?? null; if ($flash): ?>
-    <div class="container mt-3">
-      <div class="alert alert-<?= htmlspecialchars((string) $flash['type']) ?> mb-0">
-        <?= htmlspecialchars((string) $flash['message']) ?>
+  <?php 
+    // Pull the flash data reliably from either local view assignment or direct session flash variables
+    $activeFlash = $flash ?? ($_SESSION['flash'] ?? null); 
+    if ($activeFlash): 
+        // Clear it immediately so it doesn't repeat on next page click
+        if (isset($_SESSION['flash'])) { unset($_SESSION['flash']); }
+  ?>
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1100; margin-top: 85px;">
+      <div id="flashToast" class="toast align-items-center text-white bg-<?= $activeFlash['type'] === 'danger' ? 'danger' : ($activeFlash['type'] === 'success' ? 'success' : 'dark') ?> border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="4000">
+        <div class="d-flex">
+          <div class="toast-body d-flex align-items-center gap-2">
+            <?php if ($activeFlash['type'] === 'success'): ?>
+              <i class="bi bi-check-circle-fill fs-5"></i>
+            <?php else: ?>
+              <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+            <?php endif; ?>
+            <div><?= htmlspecialchars($activeFlash['message']) ?></div>
+          </div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
       </div>
     </div>
+    
+    <script>
+      // Force execution to wait until the window engine has fully mounted all third-party UI libraries
+      window.addEventListener('load', function() {
+        const toastEl = document.getElementById('flashToast');
+        if (toastEl && typeof bootstrap !== 'undefined') {
+          const bootstrapToast = new bootstrap.Toast(toastEl);
+          bootstrapToast.show();
+        } else {
+          console.warn('Bootstrap runtime script delayed or toast element missing initialization boundaries.');
+        }
+      });
+    </script>
   <?php endif; ?>
