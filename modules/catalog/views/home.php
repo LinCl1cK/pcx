@@ -28,6 +28,11 @@ $flash = $flash ?? null;
   ?>
 
   <div class="container-fluid mt-3">
+    <?php if ($flash): ?>
+      <div class="container">
+        <div class="alert alert-<?= ($flash['type'] ?? '') === 'success' ? 'success' : 'danger' ?>"><?= htmlspecialchars((string) ($flash['message'] ?? '')) ?></div>
+      </div>
+    <?php endif; ?>
     <div id="promoCarousel" class="carousel slide" data-bs-ride="carousel">
       <div class="carousel-inner">
         <?php if (!empty($promotions)): ?>
@@ -88,6 +93,7 @@ $flash = $flash ?? null;
     <h3 class="mb-4 text-center">Featured Products</h3>
     <div class="row">
       <?php foreach ($products as $product): ?>
+        <?php $availableStock = (int) ($product['available_stock'] ?? 0); ?>
         <div class="col-md-3 mb-4">
           <div class="card h-100 shadow-sm product-card">
             <div class="position-relative">
@@ -100,6 +106,9 @@ $flash = $flash ?? null;
               <p class="mb-1 text-uppercase text-muted"><?= htmlspecialchars($product['Prod_Brand'] ?? '') ?></p>
               <h6 class="card-title mb-2 text-truncate"><?= htmlspecialchars($product['Prod_Name'] ?? '') ?></h6>
               <p class="text-muted mb-0">PHP <?= isset($product['Prod_Price']) ? number_format((float) $product['Prod_Price'], 2) : '0.00' ?></p>
+              <?php if ($availableStock <= 0): ?>
+                <span class="badge text-bg-secondary mt-2">Out of stock</span>
+              <?php endif; ?>
               <div class="d-flex gap-1 justify-content-center mt-2">
                 <form method="post" action="<?= BASE_URL ?>/?r=wishlist/wishlist/add">
                   <input type="hidden" name="product_id" value="<?= htmlspecialchars((string) ($product['Prod_Id'] ?? '')) ?>">
@@ -110,7 +119,9 @@ $flash = $flash ?? null;
                   <input type="hidden" name="product_id" value="<?= htmlspecialchars((string) ($product['Prod_Id'] ?? '')) ?>">
                   <input type="hidden" name="quantity" value="1">
                   <input type="hidden" name="redirect" value="catalog/product/home">
-                  <button class="btn btn-sm <?= isset($cartQuantities[$product['Prod_Id'] ?? '']) ? 'btn-success' : 'btn-dark' ?>">Cart</button>
+                  <button class="btn btn-sm <?= $availableStock <= 0 ? 'btn-secondary' : (isset($cartQuantities[$product['Prod_Id'] ?? '']) ? 'btn-success' : 'btn-dark') ?>" <?= $availableStock <= 0 ? 'disabled' : '' ?>>
+                    <?= $availableStock <= 0 ? 'Out' : 'Cart' ?>
+                  </button>
                 </form>
               </div>
             </div>
@@ -124,6 +135,7 @@ $flash = $flash ?? null;
     <h3 class="mb-4 text-center">New Arrivals</h3>
     <div class="row">
       <?php foreach ($newArrivals as $product): ?>
+        <?php $availableStock = (int) ($product['available_stock'] ?? 0); ?>
         <div class="col-md-3 mb-4">
           <div class="card h-100 shadow-sm product-card">
             <div class="position-relative">
@@ -136,6 +148,9 @@ $flash = $flash ?? null;
               <p class="mb-1 text-uppercase text-muted"><?= htmlspecialchars($product['Prod_Brand'] ?? '') ?></p>
               <h6 class="card-title mb-2 text-truncate"><?= htmlspecialchars($product['Prod_Name'] ?? '') ?></h6>
               <p class="text-muted mb-0">PHP <?= isset($product['Prod_Price']) ? number_format((float) $product['Prod_Price'], 2) : '0.00' ?></p>
+              <?php if ($availableStock <= 0): ?>
+                <span class="badge text-bg-secondary mt-2">Out of stock</span>
+              <?php endif; ?>
               <div class="d-flex gap-1 justify-content-center mt-2">
                 <form method="post" action="<?= BASE_URL ?>/?r=wishlist/wishlist/add">
                   <input type="hidden" name="product_id" value="<?= htmlspecialchars((string) ($product['Prod_Id'] ?? '')) ?>">
@@ -146,7 +161,9 @@ $flash = $flash ?? null;
                   <input type="hidden" name="product_id" value="<?= htmlspecialchars((string) ($product['Prod_Id'] ?? '')) ?>">
                   <input type="hidden" name="quantity" value="1">
                   <input type="hidden" name="redirect" value="catalog/product/home">
-                  <button class="btn btn-sm <?= isset($cartQuantities[$product['Prod_Id'] ?? '']) ? 'btn-success' : 'btn-dark' ?>">Cart</button>
+                  <button class="btn btn-sm <?= $availableStock <= 0 ? 'btn-secondary' : (isset($cartQuantities[$product['Prod_Id'] ?? '']) ? 'btn-success' : 'btn-dark') ?>" <?= $availableStock <= 0 ? 'disabled' : '' ?>>
+                    <?= $availableStock <= 0 ? 'Out' : 'Cart' ?>
+                  </button>
                 </form>
               </div>
             </div>

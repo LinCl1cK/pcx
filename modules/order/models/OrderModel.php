@@ -22,6 +22,40 @@ class OrderModel extends BaseModel {
         $stmt->execute([':path' => $path, ':id' => $customerId]);
     }
 
+    public function getPickupBranchesForCart(string $customerId): array {
+        $stmt = $this->db->prepare(
+            "SELECT b.Branch_Id, b.Branch_Name, b.Branch_Location, b.Branch_ContactNo
+             FROM Branch b
+             INNER JOIN Cart c ON c.Cart_CusId = :cid
+             INNER JOIN Cart_Item ci ON ci.Cait_CartId = c.Cart_Id
+             LEFT JOIN Inventory i ON i.Inv_BranchId = b.Branch_Id AND i.Inv_ProdId = ci.Cait_ProdId
+             GROUP BY b.Branch_Id, b.Branch_Name, b.Branch_Location, b.Branch_ContactNo
+             HAVING SUM(CASE WHEN COALESCE(i.Inv_StockQty, 0) >= ci.Cait_Quantity THEN 1 ELSE 0 END) = COUNT(*)
+             ORDER BY b.Branch_Name ASC"
+        );
+        $stmt->execute([':cid' => $customerId]);
+        return $stmt->fetchAll();
+    }
+
+    public function getPickupBranchForCart(string $customerId, string $branchId): ?array {
+        foreach ($this->getPickupBranchesForCart($customerId) as $branch) {
+            if ((string) $branch['Branch_Id'] === $branchId) {
+                return $branch;
+            }
+        }
+        return null;
+    }
+
+    public function formatPickupAddress(array $branch): string {
+        return sprintf(
+            'Pickup at [%s] %s - %s (Contact: %s)',
+            (string) ($branch['Branch_Id'] ?? ''),
+            (string) ($branch['Branch_Name'] ?? ''),
+            (string) ($branch['Branch_Location'] ?? ''),
+            (string) ($branch['Branch_ContactNo'] ?? '')
+        );
+    }
+
     public function calculateCartTotal(string $customerId): float {
         $stmt = $this->db->prepare(
             "SELECT COALESCE(SUM(Cait_Price * Cait_Quantity), 0) AS subtotal
@@ -47,7 +81,15 @@ class OrderModel extends BaseModel {
                 throw new RuntimeException('No cart found.');
             }
 
-            $itemsStmt = $this->db->prepare("SELECT * FROM Cart_Item WHERE Cait_CartId = :cart");
+            $itemsStmt = $this->db->prepare(
+                "SELECT ci.*, COALESCE((
+                    SELECT SUM(i.Inv_StockQty)
+                    FROM Inventory i
+                    WHERE i.Inv_ProdId = ci.Cait_ProdId
+                ), 0) AS available_stock
+                 FROM Cart_Item ci
+                 WHERE ci.Cait_CartId = :cart"
+            );
             $itemsStmt->execute([':cart' => $cartId]);
             $items = $itemsStmt->fetchAll();
             if (empty($items)) {
@@ -56,6 +98,12 @@ class OrderModel extends BaseModel {
 
             $subtotal = 0.0;
             foreach ($items as $item) {
+                if ((int) $item['available_stock'] <= 0) {
+                    throw new RuntimeException('One or more cart products are out of stock.');
+                }
+                if ((int) $item['Cait_Quantity'] > (int) $item['available_stock']) {
+                    throw new RuntimeException('One or more cart quantities exceed available stock.');
+                }
                 $subtotal += (float) $item['Cait_Price'] * (int) $item['Cait_Quantity'];
             }
             $vat = round($subtotal * 0.12, 2);

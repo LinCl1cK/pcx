@@ -65,8 +65,6 @@ if ($currentEmployee) {
                 <li><a class="dropdown-item" href="<?= BASE_URL ?>/?r=auth/auth/account">My Account</a></li>
                 <li><a class="dropdown-item" href="<?= BASE_URL ?>/?r=order/order/track">Order Tracking</a></li>
                 <li><a class="dropdown-item" href="<?= BASE_URL ?>/?r=service/customerTicket/request">Service Request</a></li>
-                <li><a class="dropdown-item" href="<?= BASE_URL ?>/?r=wishlist/wishlist/view">Wishlist</a></li>
-                <li><a class="dropdown-item" href="<?= BASE_URL ?>/?r=cart/cart/view">Cart</a></li>
                 <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item" href="<?= BASE_URL ?>/?r=auth/auth/logout">Logout</a></li>
               </ul>

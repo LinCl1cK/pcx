@@ -1,13 +1,27 @@
 <?php
-$user = $user ?? [];
-$customer = $customer ?? [];
-$items = $items ?? [];
-$subtotal = (float) ($subtotal ?? 0);
-$categories = $categories ?? [];
-$pageTitle = $pageTitle ?? 'Shopping Cart - PCX Store';
-$flash = $flash ?? null;
-require_once __DIR__ . '/../../../app/core/header.php';
+  $user = $user ?? [];
+  $customer = $customer ?? [];
+  $items = $items ?? [];
+  $subtotal = (float) ($subtotal ?? 0);
+  $categories = $categories ?? [];
+  $pageTitle = $pageTitle ?? 'Shopping Cart - PCX Store';
+  $flash = $flash ?? null;
+  $basePath = dirname(__DIR__, 3); // This gets C:\xampp\htdocs\pcx
+  require_once $basePath . '/app/views/layouts/customer_header.php';
 ?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PCX Store</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="<?= BASE_URL ?>/assets/css/style.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" defer></script>
+  <script src="<?= BASE_URL ?>/assets/js/main.js" defer></script>
+</head>
+<body>
   <div class="container py-5">
     <h1 class="h3 mb-3">Shopping Cart</h1>
     <p class="text-muted mb-4">Signed in as <?= htmlspecialchars((string) ($user['email'] ?? '')) ?></p>
@@ -34,6 +48,7 @@ require_once __DIR__ . '/../../../app/core/header.php';
           </thead>
           <tbody>
             <?php foreach ($items as $item): ?>
+              <?php $availableStock = (int) ($item['available_stock'] ?? 0); ?>
               <tr>
                 <td>
                   <div class="d-flex align-items-center gap-2">
@@ -41,6 +56,11 @@ require_once __DIR__ . '/../../../app/core/header.php';
                     <div>
                       <div class="fw-semibold"><?= htmlspecialchars((string) $item['Prod_Name']) ?></div>
                       <small class="text-muted"><?= htmlspecialchars((string) $item['Prod_Brand']) ?></small>
+                      <?php if ($availableStock <= 0): ?>
+                        <div><span class="badge text-bg-secondary">Out of stock</span></div>
+                      <?php elseif ((int) $item['quantity'] > $availableStock): ?>
+                        <div><span class="badge text-bg-warning">Only <?= $availableStock ?> left</span></div>
+                      <?php endif; ?>
                     </div>
                   </div>
                 </td>
@@ -48,8 +68,8 @@ require_once __DIR__ . '/../../../app/core/header.php';
                 <td>
                   <form method="post" action="<?= BASE_URL ?>/?r=cart/cart/update" class="d-flex gap-2">
                     <input type="hidden" name="product_id" value="<?= htmlspecialchars((string) $item['Prod_Id']) ?>">
-                    <input type="number" min="1" name="quantity" value="<?= (int) $item['quantity'] ?>" class="form-control form-control-sm" style="max-width:80px;">
-                    <button class="btn btn-sm btn-outline-dark" type="submit">Update</button>
+                    <input type="number" min="1" max="<?= max(1, $availableStock) ?>" name="quantity" value="<?= (int) $item['quantity'] ?>" class="form-control form-control-sm" style="max-width:80px;" <?= $availableStock <= 0 ? 'disabled' : '' ?>>
+                    <button class="btn btn-sm btn-outline-dark" type="submit" <?= $availableStock <= 0 ? 'disabled' : '' ?>>Update</button>
                   </form>
                 </td>
                 <td>PHP <?= number_format((float) $item['line_total'], 2) ?></td>
@@ -76,7 +96,17 @@ require_once __DIR__ . '/../../../app/core/header.php';
               <input type="hidden" name="r" value="order/order/checkout">
               <div class="row g-2">
                 <div class="col-md-12">
-                  <button class="btn btn-dark w-100" type="submit">Checkout</button>
+                  <?php
+                    $hasStockIssue = false;
+                    foreach ($items as $item) {
+                        $stock = (int) ($item['available_stock'] ?? 0);
+                        if ($stock <= 0 || (int) $item['quantity'] > $stock) {
+                            $hasStockIssue = true;
+                            break;
+                        }
+                    }
+                  ?>
+                  <button class="btn btn-dark w-100" type="submit" <?= $hasStockIssue ? 'disabled' : '' ?>>Checkout</button>
                 </div>
               </div>
             </form>
@@ -85,4 +115,5 @@ require_once __DIR__ . '/../../../app/core/header.php';
       </div>
     <?php endif; ?>
   </div>
+</body>
 <?php require_once __DIR__ . '/../../../app/core/footer.php'; ?>

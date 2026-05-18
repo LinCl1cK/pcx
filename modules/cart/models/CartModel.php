@@ -23,6 +23,16 @@ class CartModel extends BaseModel {
         return $cartId;
     }
 
+    private function getAvailableStock(string $productId): int {
+        $stmt = $this->db->prepare(
+            "SELECT COALESCE(SUM(Inv_StockQty), 0)
+             FROM Inventory
+             WHERE Inv_ProdId = :pid"
+        );
+        $stmt->execute([':pid' => $productId]);
+        return (int) $stmt->fetchColumn();
+    }
+
     public function addToCart(string $customerId, string $productId, int $quantity = 1): bool {
         $quantity = max(1, $quantity);
         $cartId = $this->getOrCreateCartId($customerId);
@@ -33,9 +43,17 @@ class CartModel extends BaseModel {
         );
         $itemStmt->execute([':cart' => $cartId, ':pid' => $productId]);
         $existing = $itemStmt->fetch();
+        $existingQty = $existing ? (int) $existing['Cait_Quantity'] : 0;
+        $availableStock = $this->getAvailableStock($productId);
+        if ($availableStock <= 0) {
+            throw new RuntimeException('This product is out of stock.');
+        }
+        if ($existingQty + $quantity > $availableStock) {
+            throw new RuntimeException('Requested quantity exceeds available stock.');
+        }
 
         if ($existing) {
-            $newQty = (int) $existing['Cait_Quantity'] + $quantity;
+            $newQty = $existingQty + $quantity;
             $update = $this->db->prepare(
                 "UPDATE Cart_Item SET Cait_Quantity = :qty
                  WHERE Cait_Id = :id"
@@ -69,6 +87,13 @@ class CartModel extends BaseModel {
         if ($quantity <= 0) {
             return $this->removeFromCart($customerId, $productId);
         }
+        $availableStock = $this->getAvailableStock($productId);
+        if ($availableStock <= 0) {
+            throw new RuntimeException('This product is out of stock.');
+        }
+        if ($quantity > $availableStock) {
+            throw new RuntimeException('Requested quantity exceeds available stock.');
+        }
 
         $stmt = $this->db->prepare(
             "UPDATE Cart_Item SET Cait_Quantity = :qty
@@ -95,7 +120,12 @@ class CartModel extends BaseModel {
                 (ci.Cait_Quantity * ci.Cait_Price) AS line_total,
                 p.Prod_Name,
                 p.Prod_Brand,
-                p.Prod_Image
+                p.Prod_Image,
+                COALESCE((
+                    SELECT SUM(i.Inv_StockQty)
+                    FROM Inventory i
+                    WHERE i.Inv_ProdId = p.Prod_Id
+                ), 0) AS available_stock
              FROM Cart_Item ci
              INNER JOIN Product p ON p.Prod_Id = ci.Cait_ProdId
              WHERE ci.Cait_CartId = :cart
@@ -119,4 +149,3 @@ class CartModel extends BaseModel {
         return $map;
     }
 }
-

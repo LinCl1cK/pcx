@@ -1,7 +1,12 @@
 <?php
 class ProductModel extends BaseModel {
     public function getAllProducts(?string $search = null, ?string $category = null): array {
-        $sql = "SELECT p.*, c.Cat_Name
+        $sql = "SELECT p.*, c.Cat_Name,
+                       COALESCE((
+                           SELECT SUM(i.Inv_StockQty)
+                           FROM Inventory i
+                           WHERE i.Inv_ProdId = p.Prod_Id
+                       ), 0) AS available_stock
                 FROM Product p
                 LEFT JOIN Category c ON c.Cat_Id = p.Prod_CatId
                 WHERE p.Prod_Status = 'Active'";
@@ -35,9 +40,14 @@ class ProductModel extends BaseModel {
                 Prod_Description,
                 Prod_Warranty,
                 Prod_Status,
-                Prod_CreatedAt
+                Prod_CreatedAt,
+                COALESCE((
+                    SELECT SUM(i.Inv_StockQty)
+                    FROM Inventory i
+                    WHERE i.Inv_ProdId = Product.Prod_Id
+                ), 0) AS available_stock
              FROM Product
-             WHERE Prod_Status='Active' AND Prod_Featured = 1
+             WHERE Prod_Status = 'Active' AND Prod_Featured = 1
              ORDER BY Prod_CreatedAt DESC
              LIMIT :limit"
         );
@@ -57,9 +67,14 @@ class ProductModel extends BaseModel {
                 Prod_Description,
                 Prod_Warranty,
                 Prod_Status,
-                Prod_CreatedAt
+                Prod_CreatedAt,
+                COALESCE((
+                    SELECT SUM(i.Inv_StockQty)
+                    FROM Inventory i
+                    WHERE i.Inv_ProdId = Product.Prod_Id
+                ), 0) AS available_stock
              FROM Product
-             WHERE Prod_Status='Active'
+             WHERE Prod_Status = 'Active'
              ORDER BY Prod_CreatedAt DESC
              LIMIT :limit"
         );
@@ -101,10 +116,15 @@ class ProductModel extends BaseModel {
 
     public function getProductById(string $id): ?array {
         $stmt = $this->db->prepare(
-            "SELECT p.*, c.Cat_Name
+            "SELECT p.*, c.Cat_Name,
+                    COALESCE((
+                        SELECT SUM(i.Inv_StockQty)
+                        FROM Inventory i
+                        WHERE i.Inv_ProdId = p.Prod_Id
+                    ), 0) AS available_stock
              FROM Product p
              LEFT JOIN Category c ON c.Cat_Id = p.Prod_CatId
-             WHERE p.Prod_Id=:id"
+             WHERE p.Prod_Id = :id"
         );
         $stmt->execute([':id'=>$id]);
         return $stmt->fetch() ?: null;

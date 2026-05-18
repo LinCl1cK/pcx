@@ -78,6 +78,7 @@ class OrderController extends BaseController {
         View::render(__DIR__ . '/../views/checkout.php', [
             'items' => $items,
             'customer' => $customer,
+            'pickupBranches' => $this->model->getPickupBranchesForCart($customerId),
             'subtotal' => $subtotal,
             'total' => $total,
             'requiresId' => $total >= 50000,
@@ -98,9 +99,16 @@ class OrderController extends BaseController {
             $shipping = 'Delivery';
         }
         $destinationAddress = trim((string) ($_POST['destination_address'] ?? ''));
+        $pickupBranchId = trim((string) ($_POST['pickup_branch_id'] ?? ''));
         $contactNo = trim((string) ($_POST['contact_no'] ?? ''));
-        if ($shipping === 'Pickup' && $destinationAddress === '') {
-            $destinationAddress = 'Pickup at selected PCX branch';
+        if ($shipping === 'Pickup') {
+            $customerId = (string) $_SESSION['user']['id'];
+            $branch = $this->model->getPickupBranchForCart($customerId, $pickupBranchId);
+            if (!$branch) {
+                $this->setFlash('danger', 'Please select a pickup branch with enough stock for every cart item.');
+                $this->redirect(BASE_URL . '/?r=order/order/checkout');
+            }
+            $destinationAddress = $this->model->formatPickupAddress($branch);
         }
         if ($destinationAddress === '') {
             $this->setFlash('danger', 'Destination address is required.');

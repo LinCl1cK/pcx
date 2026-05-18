@@ -85,6 +85,7 @@ class PaymentController extends BaseController {
         $customerId = (string) $_SESSION['user']['id'];
         $shipping = (string) ($_POST['shipping'] ?? 'Delivery');
         $destinationAddress = trim((string) ($_POST['destination_address'] ?? ''));
+        $pickupBranchId = trim((string) ($_POST['pickup_branch_id'] ?? ''));
         $contactNo = trim((string) ($_POST['contact_no'] ?? ''));
         $paymentChoice = (string) ($_POST['payment_option'] ?? 'COD');
         $region = (string) ($_POST['cod_region'] ?? 'Metro Manila');
@@ -95,8 +96,12 @@ class PaymentController extends BaseController {
             if (!in_array($shipping, ['Delivery', 'Pickup'], true)) {
                 throw new RuntimeException('Invalid shipping method.');
             }
-            if ($shipping === 'Pickup' && $destinationAddress === '') {
-                $destinationAddress = 'Pickup at selected PCX branch';
+            if ($shipping === 'Pickup') {
+                $branch = $this->orderModel->getPickupBranchForCart($customerId, $pickupBranchId);
+                if (!$branch) {
+                    throw new RuntimeException('Please select a pickup branch with enough stock for every cart item.');
+                }
+                $destinationAddress = $this->orderModel->formatPickupAddress($branch);
             }
             if ($destinationAddress === '') {
                 throw new RuntimeException('Destination address is required.');

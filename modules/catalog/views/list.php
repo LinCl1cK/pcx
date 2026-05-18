@@ -20,14 +20,16 @@ $flash = $flash ?? null;
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" defer></script>
   <script src="<?= BASE_URL ?>/assets/js/main.js" defer></script>
 </head>
+<?php
+  // Fix for app/core/header.php
+  $basePath = dirname(__DIR__, 3); // This gets C:\xampp\htdocs\pcx
+  require_once $basePath . '/app/views/layouts/customer_header.php';
+?>
 <body>
-  <?php
-    // Fix for app/core/header.php
-    $basePath = dirname(__DIR__, 2); // This gets C:\xampp\htdocs\pcx
-    require_once $basePath . '/app/views/layouts/customer_header.php';
-  ?>
-
   <div class="container py-4">
+    <?php if ($flash): ?>
+      <div class="alert alert-<?= ($flash['type'] ?? '') === 'success' ? 'success' : 'danger' ?>"><?= htmlspecialchars((string) ($flash['message'] ?? '')) ?></div>
+    <?php endif; ?>
     <form method="get" action="<?= BASE_URL ?>" class="row g-2 mb-4">
       <input type="hidden" name="r" value="catalog/product/list">
       <div class="col-md-5">
@@ -51,6 +53,7 @@ $flash = $flash ?? null;
 
     <div class="row">
       <?php foreach ($products as $p): ?>
+        <?php $availableStock = (int) ($p['available_stock'] ?? 0); ?>
         <div class="col-md-3 mb-4">
           <div class="card h-100 shadow-sm product-card">
             <img src="<?= BASE_URL ?>/assets/images/products/<?= htmlspecialchars($p['Prod_Image']) ?>" class="card-img-top fixed-img" alt="<?= htmlspecialchars($p['Prod_Name']) ?>">
@@ -58,6 +61,9 @@ $flash = $flash ?? null;
               <h5 class="card-title"><?= htmlspecialchars($p['Prod_Name']) ?></h5>
               <p class="mb-1 text-muted"><?= htmlspecialchars($p['Prod_Brand']) ?></p>
               <p class="text-muted mb-3">PHP <?= number_format((float) $p['Prod_Price'], 2) ?></p>
+              <?php if ($availableStock <= 0): ?>
+                <span class="badge text-bg-secondary mb-2">Out of stock</span>
+              <?php endif; ?>
               <div class="d-flex gap-2">
                 <a href="<?= BASE_URL ?>/?r=catalog/product/detail&id=<?= urlencode($p['Prod_Id']) ?>" class="btn btn-outline-dark btn-sm">View</a>
                 <form method="post" action="<?= BASE_URL ?>/?r=wishlist/wishlist/add" class="d-inline">
@@ -71,9 +77,9 @@ $flash = $flash ?? null;
               <form method="post" action="<?= BASE_URL ?>/?r=cart/cart/add" class="mt-2 d-flex gap-2">
                 <input type="hidden" name="product_id" value="<?= htmlspecialchars((string) $p['Prod_Id']) ?>">
                 <input type="hidden" name="redirect" value="catalog/product/list">
-                <input type="number" name="quantity" value="1" min="1" class="form-control form-control-sm" style="max-width: 80px;">
-                <button class="btn btn-sm <?= isset($cartQuantities[$p['Prod_Id']]) ? 'btn-success' : 'btn-dark' ?>" type="submit">
-                  <?= isset($cartQuantities[$p['Prod_Id']]) ? 'In Cart (' . (int) $cartQuantities[$p['Prod_Id']] . ')' : 'Add to Cart' ?>
+                <input type="number" name="quantity" value="1" min="1" max="<?= max(1, $availableStock) ?>" class="form-control form-control-sm" style="max-width: 80px;" <?= $availableStock <= 0 ? 'disabled' : '' ?>>
+                <button class="btn btn-sm <?= $availableStock <= 0 ? 'btn-secondary' : (isset($cartQuantities[$p['Prod_Id']]) ? 'btn-success' : 'btn-dark') ?>" type="submit" <?= $availableStock <= 0 ? 'disabled' : '' ?>>
+                  <?= $availableStock <= 0 ? 'Out of Stock' : (isset($cartQuantities[$p['Prod_Id']]) ? 'In Cart (' . (int) $cartQuantities[$p['Prod_Id']] . ')' : 'Add to Cart') ?>
                 </button>
               </form>
             </div>
@@ -89,6 +95,6 @@ $flash = $flash ?? null;
   </div>
 <?php
   // Fix for app/core/footer.php
-  $basePath = dirname(__DIR__, 2);
+  $basePath = dirname(__DIR__, 3);
   require_once $basePath . '/app/views/layouts/customer_footer.php';
 ?>

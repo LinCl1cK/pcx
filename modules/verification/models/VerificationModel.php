@@ -2,6 +2,16 @@
 declare(strict_types=1);
 
 class VerificationModel extends BaseModel {
+    private function getPickupBranchId(array $order): ?string {
+        if (($order['Order_Shipping'] ?? '') !== 'Pickup') {
+            return null;
+        }
+        if (preg_match('/^Pickup at \[([^\]]+)\]/', (string) ($order['Order_DestinationAddress'] ?? ''), $matches)) {
+            return $matches[1];
+        }
+        return null;
+    }
+
     public function getPendingOrders(): array {
         $sql = "SELECT o.*, c.Cus_Fname, c.Cus_Lname, c.Cus_Email, c.Cus_IdAttachment
                 FROM Orders o
@@ -43,6 +53,10 @@ class VerificationModel extends BaseModel {
             $branchId = (string) ($branchStmt->fetchColumn() ?: '');
             if ($branchId === '') {
                 throw new RuntimeException('Verifier branch not found.');
+            }
+            $pickupBranchId = $this->getPickupBranchId($order);
+            if ($pickupBranchId !== null && $pickupBranchId !== $branchId) {
+                throw new RuntimeException('Pickup orders must be verified by staff from the selected branch.');
             }
 
             $invStmt = $this->db->prepare(

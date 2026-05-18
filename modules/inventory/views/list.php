@@ -16,29 +16,41 @@ require dirname(__DIR__, 3) . '/app/views/layouts/employee_begin.php';
 <?php if ($readOnly): ?>
   <div class="alert alert-secondary">View-only inventory. Stock changes are performed by administrators.</div>
 <?php endif; ?>
-
-<div class="table-responsive bg-white rounded shadow-sm mb-3">
-  <table class="table table-striped mb-0 align-middle">
-    <thead>
-      <tr><th>Product</th><th>Branch</th><th>Stock</th><th>Reorder</th><th>Updated</th><?php if (!$readOnly): ?><th></th><?php endif; ?></tr>
-    </thead>
-    <tbody>
-    <?php foreach ($stocks as $s): ?>
-      <tr>
-        <td><?= htmlspecialchars((string) $s['Prod_Name']) ?></td>
-        <td><?= htmlspecialchars((string) $s['Branch_Name']) ?></td>
-        <td><?= (int) $s['Inv_StockQty'] ?></td>
-        <td><?= (int) $s['Inv_ReorderLevel'] ?></td>
-        <td><small><?= htmlspecialchars((string) $s['Inv_LastUpdated']) ?></small></td>
-        <?php if (!$readOnly): ?>
-        <td><a href="<?= BASE_URL ?>/?r=inventory/inventory/edit&id=<?= urlencode((string) $s['Inv_Id']) ?>" class="btn btn-sm btn-primary">Edit</a></td>
-        <?php endif; ?>
-      </tr>
-    <?php endforeach; ?>
-    </tbody>
-  </table>
-</div>
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PCX Store</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="<?= BASE_URL ?>/assets/css/style.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" defer></script>
+  <script src="<?= BASE_URL ?>/assets/js/main.js" defer></script>
+</head>
+<body>
+  <div class="table-responsive bg-white rounded shadow-sm mb-3">
+    <table class="table table-striped mb-0 align-middle">
+      <thead>
+        <tr><th>Product</th><th>Branch</th><th>Stock</th><th>Reorder</th><th>Updated</th><?php if (!$readOnly): ?><th></th><?php endif; ?></tr>
+      </thead>
+      <tbody>
+      <?php foreach ($stocks as $s): ?>
+        <tr>
+          <td><?= htmlspecialchars((string) $s['Prod_Name']) ?></td>
+          <td><?= htmlspecialchars((string) $s['Branch_Name']) ?></td>
+          <td><?= (int) $s['Inv_StockQty'] ?></td>
+          <td><?= (int) $s['Inv_ReorderLevel'] ?></td>
+          <td><small><?= htmlspecialchars((string) $s['Inv_LastUpdated']) ?></small></td>
+          <?php if (!$readOnly): ?>
+          <td><a href="<?= BASE_URL ?>/?r=inventory/inventory/edit&id=<?= urlencode((string) $s['Inv_Id']) ?>" class="btn btn-sm btn-primary">Edit</a></td>
+          <?php endif; ?>
+        </tr>
+      <?php endforeach; ?>
+      </tbody>
+    </table>
+  </div>
+</body>
 <?php if (!$readOnly): ?>
 <div class="card border-0 shadow-sm">
   <div class="card-body">

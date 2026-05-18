@@ -2,6 +2,16 @@
 declare(strict_types=1);
 
 class SalesModel extends BaseModel {
+    private function getPickupBranchId(array $order): ?string {
+        if (($order['Order_Shipping'] ?? '') !== 'Pickup') {
+            return null;
+        }
+        if (preg_match('/^Pickup at \[([^\]]+)\]/', (string) ($order['Order_DestinationAddress'] ?? ''), $matches)) {
+            return $matches[1];
+        }
+        return null;
+    }
+
     public function dashboardSummary(string $empId): array {
         $pending = (int) $this->db->query("SELECT COUNT(*) FROM Orders WHERE Order_Status = 'Pending'")->fetchColumn();
 
@@ -107,6 +117,10 @@ class SalesModel extends BaseModel {
             $branchId = (string) ($branchStmt->fetchColumn() ?: '');
             if ($branchId === '') {
                 throw new RuntimeException('Sales representative branch not found.');
+            }
+            $pickupBranchId = $this->getPickupBranchId($order);
+            if ($pickupBranchId !== null && $pickupBranchId !== $branchId) {
+                throw new RuntimeException('Pickup orders must be verified by a sales representative from the selected branch.');
             }
 
             $invStmt = $this->db->prepare(

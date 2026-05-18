@@ -1,11 +1,25 @@
 <?php
-$user = $user ?? [];
-$items = $items ?? [];
-$categories = $categories ?? [];
-$pageTitle = $pageTitle ?? 'Wishlist - PCX Store';
-$flash = $flash ?? null;
-require_once __DIR__ . '/../../../app/core/header.php';
+  $user = $user ?? [];
+  $items = $items ?? [];
+  $categories = $categories ?? [];
+  $pageTitle = $pageTitle ?? 'Wishlist - PCX Store';
+  $flash = $flash ?? null;
+  $basePath = dirname(__DIR__, 3); // This gets C:\xampp\htdocs\pcx
+  require_once $basePath . '/app/views/layouts/customer_header.php';
 ?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PCX Store</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="<?= BASE_URL ?>/assets/css/style.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" defer></script>
+  <script src="<?= BASE_URL ?>/assets/js/main.js" defer></script>
+</head>
+<body>
   <div class="container py-5">
     <h1 class="h3 mb-3">Wishlist</h1>
     <p class="text-muted mb-4">Signed in as <?= htmlspecialchars((string) ($user['email'] ?? '')) ?></p>
@@ -50,5 +64,6 @@ require_once __DIR__ . '/../../../app/core/header.php';
       </div>
     <?php endif; ?>
   </div>
+</body>
 <?php require_once __DIR__ . '/../../../app/core/footer.php'; ?>
 

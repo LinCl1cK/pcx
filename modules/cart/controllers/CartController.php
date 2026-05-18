@@ -54,8 +54,12 @@ class CartController extends BaseController {
             $this->redirectToRoute($redirect);
         }
 
-        $ok = $this->model->addToCart((string) $_SESSION['user']['id'], $productId, $quantity);
-        $this->setFlash($ok ? 'success' : 'danger', $ok ? 'Added to cart.' : 'Unable to add cart item.');
+        try {
+            $ok = $this->model->addToCart((string) $_SESSION['user']['id'], $productId, $quantity);
+            $this->setFlash($ok ? 'success' : 'danger', $ok ? 'Added to cart.' : 'Unable to add cart item.');
+        } catch (Throwable $e) {
+            $this->setFlash('danger', $e->getMessage());
+        }
         if ($redirect === 'catalog/product/detail') {
             $this->redirect(BASE_URL . '/?r=catalog/product/detail&id=' . urlencode($productId));
         }
@@ -71,8 +75,12 @@ class CartController extends BaseController {
             $this->redirectToRoute('cart/cart/view');
         }
 
-        $ok = $this->model->updateCartQuantity((string) $_SESSION['user']['id'], $productId, $quantity);
-        $this->setFlash($ok ? 'success' : 'danger', $ok ? 'Cart updated.' : 'Unable to update cart.');
+        try {
+            $ok = $this->model->updateCartQuantity((string) $_SESSION['user']['id'], $productId, $quantity);
+            $this->setFlash($ok ? 'success' : 'danger', $ok ? 'Cart updated.' : 'Unable to update cart.');
+        } catch (Throwable $e) {
+            $this->setFlash('danger', $e->getMessage());
+        }
         $this->redirect(BASE_URL . '/?r=cart/cart/view');
     }
 
