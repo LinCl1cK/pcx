@@ -25,6 +25,9 @@ class CartController extends BaseController {
         $customerId = (string) $_SESSION['user']['id'];
 
         $items = $this->model->getCartItems($customerId);
+        $customerStmt = $this->db->prepare("SELECT Cus_ContactNo, Cus_Address FROM Customer WHERE Cus_Id = :id LIMIT 1");
+        $customerStmt->execute([':id' => $customerId]);
+        $customer = $customerStmt->fetch() ?: [];
         $subtotal = array_reduce($items, static function (float $sum, array $item): float {
             return $sum + (float) $item['line_total'];
         }, 0.0);
@@ -33,6 +36,7 @@ class CartController extends BaseController {
             'pageTitle' => 'Shopping Cart - PCX Store',
             'user' => $_SESSION['user'],
             'items' => $items,
+            'customer' => $customer,
             'subtotal' => $subtotal,
             'categories' => $this->productModel->getAllCategories(),
             'flash' => $this->pullFlash(),

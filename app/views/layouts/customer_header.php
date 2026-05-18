@@ -2,6 +2,15 @@
 $currentUser = $_SESSION['user'] ?? null;
 $currentEmployee = $_SESSION['employee'] ?? null;
 $categories = $categories ?? [];
+$staffPortalRoute = 'admin/admin/dashboard';
+if ($currentEmployee) {
+  $employeeRole = strtolower(trim((string) ($currentEmployee['role'] ?? '')));
+  if ($employeeRole === 'sales representative') {
+    $staffPortalRoute = 'sales/sales/dashboard';
+  } elseif ($employeeRole === 'technician') {
+    $staffPortalRoute = 'technician/technician/dashboard';
+  }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -63,7 +72,7 @@ $categories = $categories ?? [];
               </ul>
             </div>
           <?php elseif ($currentEmployee): ?>
-            <a class="btn btn-outline-secondary me-2" href="<?= BASE_URL ?>/?r=admin/admin/dashboard">Staff Portal</a>
+            <a class="btn btn-outline-secondary me-2" href="<?= BASE_URL ?>/?r=<?= htmlspecialchars($staffPortalRoute) ?>">Staff Portal</a>
             <a class="btn btn-outline-danger" href="<?= BASE_URL ?>/?r=auth/auth/employeeLogout">Staff Logout</a>
           <?php else: ?>
             <button class="btn btn-outline-secondary me-2" data-bs-toggle="modal" data-bs-target="#authModal">

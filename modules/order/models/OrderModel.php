@@ -6,7 +6,38 @@ class OrderModel extends BaseModel {
         return $prefix . str_pad((string) random_int(1, 999999999), 9, '0', STR_PAD_LEFT);
     }
 
-    public function placeOrderFromCart(string $customerId, string $shipping): string {
+    public function getCustomerForCheckout(string $customerId): array {
+        $stmt = $this->db->prepare(
+            "SELECT Cus_Id, Cus_Fname, Cus_Lname, Cus_Email, Cus_ContactNo, Cus_Address, Cus_IdAttachment
+             FROM Customer
+             WHERE Cus_Id = :id
+             LIMIT 1"
+        );
+        $stmt->execute([':id' => $customerId]);
+        return $stmt->fetch() ?: [];
+    }
+
+    public function updateCustomerIdAttachment(string $customerId, string $path): void {
+        $stmt = $this->db->prepare("UPDATE Customer SET Cus_IdAttachment = :path WHERE Cus_Id = :id");
+        $stmt->execute([':path' => $path, ':id' => $customerId]);
+    }
+
+    public function calculateCartTotal(string $customerId): float {
+        $stmt = $this->db->prepare(
+            "SELECT COALESCE(SUM(Cait_Price * Cait_Quantity), 0) AS subtotal
+             FROM Cart c
+             INNER JOIN Cart_Item ci ON ci.Cait_CartId = c.Cart_Id
+             WHERE c.Cart_CusId = :cid"
+        );
+        $stmt->execute([':cid' => $customerId]);
+        $subtotal = (float) $stmt->fetchColumn();
+        if ($subtotal <= 0) {
+            throw new RuntimeException('Cart is empty.');
+        }
+        return round($subtotal * 1.12, 2);
+    }
+
+    public function placeOrderFromCart(string $customerId, string $shipping, string $destinationAddress, ?string $contactNo): string {
         $this->db->beginTransaction();
         try {
             $cartIdStmt = $this->db->prepare("SELECT Cart_Id FROM Cart WHERE Cart_CusId = :cid LIMIT 1");
@@ -34,14 +65,16 @@ class OrderModel extends BaseModel {
             $invoiceNo = 'INV-' . date('Ymd') . '-' . substr($orderId, -4);
             $stmtOrder = $this->db->prepare(
                 "INSERT INTO Orders
-                (Order_Id, Order_Date, Order_Status, Order_Shipping, Order_CusId, Order_InvoiceNo, Order_InvoiceDate, Order_VAT, Order_TotalAmount)
+                (Order_Id, Order_Date, Order_Status, Order_Shipping, Order_DestinationAddress, Order_ContactNo, Order_CusId, Order_InvoiceNo, Order_InvoiceDate, Order_VAT, Order_TotalAmount)
                 VALUES
-                (:id, NOW(), 'Pending', :ship, :cid, :invoice, NOW(), :vat, :total)"
+                (:id, NOW(), 'Pending', :ship, :address, :contact, :cid, :invoice, NOW(), :vat, :total)"
             );
 
             $stmtOrder->execute([
                 ':id' => $orderId,
                 ':ship' => $shipping,
+                ':address' => $destinationAddress,
+                ':contact' => $contactNo,
                 ':cid' => $customerId,
                 ':invoice' => $invoiceNo,
                 ':vat' => $vat,

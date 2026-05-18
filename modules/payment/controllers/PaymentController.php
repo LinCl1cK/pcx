@@ -23,11 +23,33 @@ class PaymentController extends BaseController {
             echo 'Order not found';
             return;
         }
+        $requiresId = (float) ($order['Order_TotalAmount'] ?? 0) >= 50000;
+        $hasId = !empty($order['Cus_IdAttachment']);
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $method = (string) ($_POST['method'] ?? 'COD');
             $region = (string) ($_POST['region'] ?? 'Metro Manila');
             $amount = (float) ($order['Order_TotalAmount'] ?? 0);
+            if (!in_array($method, ['COD', 'GCash', 'Maya', 'Bank Transfer'], true)) {
+                View::render(__DIR__ . '/../views/pay.php', [
+                    'order' => $order,
+                    'error' => 'Invalid payment method.',
+                    'categories' => $this->productModel->getAllCategories(),
+                    'requiresId' => $requiresId,
+                    'hasId' => $hasId,
+                ]);
+                return;
+            }
+            if ($requiresId && !$hasId) {
+                View::render(__DIR__ . '/../views/pay.php', [
+                    'order' => $order,
+                    'error' => 'A valid ID attachment is required before paying high-value orders.',
+                    'categories' => $this->productModel->getAllCategories(),
+                    'requiresId' => $requiresId,
+                    'hasId' => $hasId,
+                ]);
+                return;
+            }
             try {
                 $this->model->simulatePayment($orderId, $method, $amount, $region);
                 $this->setFlash('success', 'Payment simulation completed.');
@@ -37,6 +59,8 @@ class PaymentController extends BaseController {
                     'order' => $order,
                     'error' => $e->getMessage(),
                     'categories' => $this->productModel->getAllCategories(),
+                    'requiresId' => $requiresId,
+                    'hasId' => $hasId,
                 ]);
             }
             return;
@@ -45,6 +69,8 @@ class PaymentController extends BaseController {
         View::render(__DIR__ . '/../views/pay.php', [
             'order' => $order,
             'categories' => $this->productModel->getAllCategories(),
+            'requiresId' => $requiresId,
+            'hasId' => $hasId,
         ]);
     }
 

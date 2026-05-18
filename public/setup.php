@@ -39,13 +39,13 @@ try {
     // 2. EMPLOYEES (Covering all roles per schema)
     echo "<h3>Populating Employees...</h3>";
     $employees = [
-        ['EMP-001', 'Juan', 'Dela Cruz', 'juan.dc@pcx.com.ph', 'Administrator', 'BRAN-001', password_hash('admin123', PASSWORD_DEFAULT)],
-        ['EMP-002', 'Maria', 'Santos', 'm.santos@pcx.com.ph', 'Sales Representative', 'BRAN-001', password_hash('sales123', PASSWORD_DEFAULT)],
-        ['EMP-003', 'Rico', 'Blanco', 'r.blanco@pcx.com.ph', 'Technician', 'BRAN-002', password_hash('tech123', PASSWORD_DEFAULT)],
-        ['EMP-004', 'Elena', 'Adarna', 'e.adarna@pcx.com.ph', 'Manager', 'BRAN-003', password_hash('manager123', PASSWORD_DEFAULT)],
-        ['EMP-005', 'Kevin', 'Alas', 'k.alas@pcx.com.ph', 'Sales Representative', 'BRAN-004', password_hash('sales123', PASSWORD_DEFAULT)]
+        ['EMP-001', 'Juan', 'Dela Cruz', 'juan.dc@pcx.com.ph', 'Administrator', 'BRAN-001', password_hash('admin123', PASSWORD_DEFAULT), '09171234567', '123 Main St, Cebu City'],
+        ['EMP-002', 'Maria', 'Santos', 'm.santos@pcx.com.ph', 'Sales Representative', 'BRAN-001', password_hash('sales123', PASSWORD_DEFAULT), '0917589579', '456 Oak Ave, Cebu City'],
+        ['EMP-003', 'Rico', 'Blanco', 'r.blanco@pcx.com.ph', 'Technician', 'BRAN-002', password_hash('tech123', PASSWORD_DEFAULT), '09172768142', '789 Pine Rd, Cebu City'],
+        ['EMP-004', 'Elena', 'Adarna', 'e.adarna@pcx.com.ph', 'Manager', 'BRAN-003', password_hash('manager123', PASSWORD_DEFAULT), '09179385672', '321 Elm St, Cebu City'],
+        ['EMP-005', 'Kevin', 'Alas', 'k.alas@pcx.com.ph', 'Sales Representative', 'BRAN-004', password_hash('sales123', PASSWORD_DEFAULT), '09172548571', '654 Maple Dr, Cebu City']
     ];
-    $stmt = $pdo->prepare("INSERT INTO employee (Emp_Id, Emp_Fname, Emp_Lname, Emp_Email, Emp_Position, Emp_BranchId, Emp_Password) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    $stmt = $pdo->prepare("INSERT INTO employee (Emp_Id, Emp_Fname, Emp_Lname, Emp_Email, Emp_Position, Emp_BranchId, Emp_Password, Emp_ContactNo, Emp_Address) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
     foreach ($employees as $e) $stmt->execute($e);
 
     // 3. CATEGORIES (Full Cat.csv)

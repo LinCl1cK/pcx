@@ -49,12 +49,25 @@ BEGIN
     END IF;
 END$$
 
+DROP TRIGGER IF EXISTS trg_Payment_InsertStatusUpdate$$
+CREATE TRIGGER trg_Payment_InsertStatusUpdate
+AFTER INSERT ON Payment
+FOR EACH ROW
+BEGIN
+    IF NEW.Pay_Status = 'Verified' THEN
+        UPDATE Orders
+        SET Order_Status = 'Paid'
+        WHERE Order_Id = NEW.Pay_OrderID
+          AND Order_Status = 'Confirmed';
+    END IF;
+END$$
+
 DROP TRIGGER IF EXISTS trg_Inventory_AutoDeduct$$
 CREATE TRIGGER trg_Inventory_AutoDeduct
 AFTER UPDATE ON Orders
 FOR EACH ROW
 BEGIN
-    IF NEW.Order_Status = 'Confirmed' AND OLD.Order_Status <> 'Confirmed' THEN
+    IF NEW.Order_Status = 'Paid' AND OLD.Order_Status <> 'Paid' THEN
         UPDATE Inventory i
         INNER JOIN Order_Item oi ON oi.Item_ProdId = i.Inv_ProdId
         SET i.Inv_StockQty = i.Inv_StockQty - oi.Item_Quantity,
@@ -98,6 +111,8 @@ CREATE PROCEDURE sp_PlaceOrder(
     IN p_OrderId CHAR(10),
     IN p_CusId CHAR(10),
     IN p_OrderShipping ENUM('Delivery','Pickup'),
+    IN p_DestinationAddress TEXT,
+    IN p_ContactNo VARCHAR(15),
     IN p_VAT DECIMAL(10,2),
     IN p_TotalAmount DECIMAL(10,2),
     IN p_InvoiceNo VARCHAR(20)
@@ -105,9 +120,11 @@ CREATE PROCEDURE sp_PlaceOrder(
 BEGIN
     INSERT INTO Orders (
         Order_Id, Order_Date, Order_Status, Order_Shipping,
+        Order_DestinationAddress, Order_ContactNo,
         Order_CusId, Order_InvoiceNo, Order_InvoiceDate, Order_VAT, Order_TotalAmount
     ) VALUES (
         p_OrderId, NOW(), 'Pending', p_OrderShipping,
+        p_DestinationAddress, p_ContactNo,
         p_CusId, p_InvoiceNo, NOW(), p_VAT, p_TotalAmount
     );
 END$$
@@ -116,9 +133,9 @@ DROP PROCEDURE IF EXISTS sp_ConfirmPayment$$
 CREATE PROCEDURE sp_ConfirmPayment(
     IN p_PayId CHAR(10),
     IN p_OrderId CHAR(10),
-    IN p_Method ENUM('COD','Bank Transfer'),
+    IN p_Method ENUM('COD','Card','GCash','Maya','Bank Transfer'),
     IN p_Amount DECIMAL(10,2),
-    IN p_Status ENUM('Pending','Verified'),
+    IN p_Status ENUM('Pending','Verified','Rejected','Cancelled'),
     IN p_Details VARCHAR(255)
 )
 BEGIN

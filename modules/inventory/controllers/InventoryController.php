@@ -22,6 +22,7 @@ class InventoryController extends BaseController {
         View::render(__DIR__ . '/../views/list.php', [
             'stocks' => $stocks,
             'branches' => $this->model->getBranches(),
+            'products' => $this->model->getProducts(),
             'flash' => $this->pullFlash(),
             'readOnly' => $readOnly,
             'employee' => $_SESSION['employee'],
@@ -74,6 +75,31 @@ class InventoryController extends BaseController {
                 $qty
             );
             $this->setFlash('success', 'Branch transfer completed.');
+        } catch (Throwable $e) {
+            $this->setFlash('danger', $e->getMessage());
+        }
+        $this->redirect(BASE_URL . '/?r=inventory/inventory/list');
+    }
+
+    public function create(): void {
+        $this->requireAdministrator();
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect(BASE_URL . '/?r=inventory/inventory/list');
+        }
+        $qty = (int) ($_POST['Inv_StockQty'] ?? 0);
+        $reorder = (int) ($_POST['Inv_ReorderLevel'] ?? 10);
+        if ($qty < 0 || $reorder < 0) {
+            $this->setFlash('danger', 'Quantities must be zero or positive.');
+            $this->redirect(BASE_URL . '/?r=inventory/inventory/list');
+        }
+        try {
+            $this->model->createStock(
+                (string) ($_POST['Inv_ProdId'] ?? ''),
+                (string) ($_POST['Inv_BranchId'] ?? ''),
+                $qty,
+                $reorder
+            );
+            $this->setFlash('success', 'Inventory row created.');
         } catch (Throwable $e) {
             $this->setFlash('danger', $e->getMessage());
         }

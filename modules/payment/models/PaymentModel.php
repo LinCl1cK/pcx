@@ -7,7 +7,12 @@ class PaymentModel extends BaseModel {
     }
 
     public function getOrder(string $orderId): ?array {
-        $stmt = $this->db->prepare("SELECT * FROM Orders WHERE Order_Id = :id");
+        $stmt = $this->db->prepare(
+            "SELECT o.*, c.Cus_IdAttachment
+             FROM Orders o
+             INNER JOIN Customer c ON c.Cus_Id = o.Order_CusId
+             WHERE o.Order_Id = :id"
+        );
         $stmt->execute([':id' => $orderId]);
         return $stmt->fetch() ?: null;
     }
@@ -19,8 +24,16 @@ class PaymentModel extends BaseModel {
             if (!$order) {
                 throw new RuntimeException('Order not found.');
             }
-            if (!in_array($order['Order_Status'], ['Confirmed', 'Paid'], true)) {
+            if ($order['Order_Status'] !== 'Confirmed') {
                 throw new RuntimeException('Order must be confirmed before payment.');
+            }
+            $existing = $this->db->prepare("SELECT 1 FROM Payment WHERE Pay_OrderID = :oid AND Pay_Status = 'Verified' LIMIT 1");
+            $existing->execute([':oid' => $orderId]);
+            if ($existing->fetchColumn()) {
+                throw new RuntimeException('This order already has a verified payment.');
+            }
+            if (!in_array($method, ['COD', 'GCash', 'Maya', 'Bank Transfer'], true)) {
+                throw new RuntimeException('Invalid payment method.');
             }
 
             if ($method === 'COD') {
@@ -41,11 +54,18 @@ class PaymentModel extends BaseModel {
                 ':oid' => $orderId,
                 ':method' => $method,
                 ':amount' => $amount,
-                ':details' => 'Simulation - ' . $region,
+                ':details' => $method === 'COD' ? 'COD - ' . $region : 'Simulated ' . $method,
             ]);
 
-            $this->db->prepare("UPDATE Orders SET Order_Status = 'Paid' WHERE Order_Id = :id AND Order_Status = 'Confirmed'")
-                ->execute([':id' => $orderId]);
+            $orderUpdate = $this->db->prepare("UPDATE Orders SET Order_Status = 'Paid' WHERE Order_Id = :id AND Order_Status = 'Confirmed'");
+            $orderUpdate->execute([':id' => $orderId]);
+            if ($orderUpdate->rowCount() !== 1) {
+                $statusStmt = $this->db->prepare("SELECT Order_Status FROM Orders WHERE Order_Id = :id");
+                $statusStmt->execute([':id' => $orderId]);
+                if ($statusStmt->fetchColumn() !== 'Paid') {
+                    throw new RuntimeException('Order could not be marked as paid.');
+                }
+            }
             $this->db->commit();
             return $payId;
         } catch (Throwable $e) {

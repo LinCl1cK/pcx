@@ -109,12 +109,18 @@ class AdminController extends BaseController {
                 'position' => $_POST['role'] ?? '',
                 'branch_id' => $_POST['branch_id'] ?? '',
                 'email' => trim($_POST['email'] ?? ''),
+                'contact' => trim($_POST['contact'] ?? ''),
+                'address' => trim($_POST['address'] ?? ''),
                 'password' => $_POST['password'] ?? '',
             ];
-            if ($data['fname'] === '' || $data['lname'] === '' || $data['email'] === '' || $data['password'] === '') {
+            if ($data['fname'] === '' || $data['lname'] === '' || $data['email'] === '' || $data['contact'] === '' || $data['address'] === '' || $data['password'] === '') {
                 $this->setFlash('danger', 'All fields are required.');
+            } elseif (!in_array($data['position'], ['Sales Representative', 'Technician', 'Administrator'], true)) {
+                $this->setFlash('danger', 'Invalid employee role.');
             } elseif (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
                 $this->setFlash('danger', 'Invalid email format.');
+            } elseif (strlen($data['contact']) > 15) {
+                $this->setFlash('danger', 'Contact number must be 15 characters or fewer.');
             } elseif ($this->model->employeeEmailExists($data['email'])) {
                 $this->setFlash('danger', 'That work email is already in use.');
             } elseif (strlen($data['password']) < 8) {
@@ -165,10 +171,18 @@ class AdminController extends BaseController {
             'position' => $_POST['role'] ?? '',
             'branch_id' => $_POST['branch_id'] ?? '',
             'email' => trim($_POST['email'] ?? ''),
+            'contact' => trim($_POST['contact'] ?? ''),
+            'address' => trim($_POST['address'] ?? ''),
         ];
-        if ($data['email'] !== '' && !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+        if ($data['fname'] === '' || $data['lname'] === '' || $data['email'] === '' || $data['contact'] === '' || $data['address'] === '') {
+            $this->setFlash('danger', 'All fields are required.');
+        } elseif (!in_array($data['position'], ['Sales Representative', 'Technician', 'Administrator'], true)) {
+            $this->setFlash('danger', 'Invalid employee role.');
+        } elseif (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
             $this->setFlash('danger', 'Invalid email format.');
-        } elseif ($data['email'] !== '' && $this->model->employeeEmailExists($data['email'], $id)) {
+        } elseif (strlen($data['contact']) > 15) {
+            $this->setFlash('danger', 'Contact number must be 15 characters or fewer.');
+        } elseif ($this->model->employeeEmailExists($data['email'], $id)) {
             $this->setFlash('danger', 'That work email is already in use.');
         } elseif ($this->model->updateEmployee($id, $data)) {
             $this->setFlash('success', 'Employee updated successfully');
@@ -214,6 +228,7 @@ class AdminController extends BaseController {
                 'featured' => isset($_POST['featured']) ? 1 : 0,
                 'description' => trim($_POST['description'] ?? ''),
                 'status' => $_POST['status'] ?? 'Active',
+                'subcategories' => array_map('strval', $_POST['subcategories'] ?? []),
             ];
             if ($data['name'] === '' || $data['brand'] === '' || $data['image'] === '') {
                 $this->setFlash('danger', 'Name, brand, and image are required.');
@@ -221,16 +236,25 @@ class AdminController extends BaseController {
                 $this->setFlash('danger', 'Price must be greater than zero.');
             } elseif ($data['warranty'] < 0 || $data['warranty'] > 36) {
                 $this->setFlash('danger', 'Warranty must be between 0 and 36 months.');
-            } elseif ($this->model->createProduct($data)) {
-                $this->setFlash('success', 'Product created successfully');
+            } elseif (!in_array($data['status'], ['Active', 'Inactive', 'Discontinued'], true)) {
+                $this->setFlash('danger', 'Invalid product status.');
             } else {
-                $this->setFlash('danger', 'Failed to create product');
+                try {
+                    if ($this->model->createProduct($data)) {
+                        $this->setFlash('success', 'Product created successfully');
+                    } else {
+                        $this->setFlash('danger', 'Failed to create product');
+                    }
+                } catch (Throwable $e) {
+                    $this->setFlash('danger', $e->getMessage());
+                }
             }
             $this->redirect(BASE_URL . '/?r=admin/admin/manageProducts');
             return;
         }
         $categories = $this->model->getAllCategories();
-        View::render(__DIR__ . '/../views/create_product.php', ['categories' => $categories, 'flash' => $this->pullFlash(), 'employee' => $_SESSION['employee']]);
+        $subcategories = $this->model->getAllSubcategories();
+        View::render(__DIR__ . '/../views/create_product.php', ['categories' => $categories, 'subcategories' => $subcategories, 'flash' => $this->pullFlash(), 'employee' => $_SESSION['employee']]);
     }
 
     public function editProduct(): void {
@@ -247,7 +271,16 @@ class AdminController extends BaseController {
             return;
         }
         $categories = $this->model->getAllCategories();
-        View::render(__DIR__ . '/../views/edit_product.php', ['product' => $product, 'categories' => $categories, 'flash' => $this->pullFlash(), 'employee' => $_SESSION['employee']]);
+        $subcategories = $this->model->getAllSubcategories();
+        $selectedSubcategories = $this->model->getProductSubcategoryIds($id);
+        View::render(__DIR__ . '/../views/edit_product.php', [
+            'product' => $product,
+            'categories' => $categories,
+            'subcategories' => $subcategories,
+            'selectedSubcategories' => $selectedSubcategories,
+            'flash' => $this->pullFlash(),
+            'employee' => $_SESSION['employee'],
+        ]);
     }
 
     public function updateProduct(): void {
@@ -271,6 +304,7 @@ class AdminController extends BaseController {
             'featured' => isset($_POST['featured']) ? 1 : 0,
             'description' => trim($_POST['description'] ?? ''),
             'status' => $_POST['status'] ?? 'Active',
+            'subcategories' => array_map('strval', $_POST['subcategories'] ?? []),
         ];
         if ($data['name'] === '' || $data['brand'] === '' || $data['image'] === '') {
             $this->setFlash('danger', 'Name, brand, and image are required.');
@@ -278,10 +312,18 @@ class AdminController extends BaseController {
             $this->setFlash('danger', 'Price must be greater than zero.');
         } elseif ($data['warranty'] < 0 || $data['warranty'] > 36) {
             $this->setFlash('danger', 'Warranty must be between 0 and 36 months.');
-        } elseif ($this->model->updateProduct($id, $data)) {
-            $this->setFlash('success', 'Product updated successfully');
+        } elseif (!in_array($data['status'], ['Active', 'Inactive', 'Discontinued'], true)) {
+            $this->setFlash('danger', 'Invalid product status.');
         } else {
-            $this->setFlash('danger', 'Failed to update product');
+            try {
+                if ($this->model->updateProduct($id, $data)) {
+                    $this->setFlash('success', 'Product updated successfully');
+                } else {
+                    $this->setFlash('danger', 'Failed to update product');
+                }
+            } catch (Throwable $e) {
+                $this->setFlash('danger', $e->getMessage());
+            }
         }
         $this->redirect(BASE_URL . '/?r=admin/admin/manageProducts');
     }
@@ -293,10 +335,14 @@ class AdminController extends BaseController {
             $this->redirect(BASE_URL . '/?r=admin/admin/manageProducts');
             return;
         }
-        if ($this->model->deleteProduct($id)) {
-            $this->setFlash('success', 'Product deleted successfully');
-        } else {
-            $this->setFlash('danger', 'Failed to delete product');
+        try {
+            if ($this->model->deleteProduct($id)) {
+                $this->setFlash('success', 'Product deleted successfully');
+            } else {
+                $this->setFlash('danger', 'Failed to delete product');
+            }
+        } catch (Throwable $e) {
+            $this->setFlash('danger', $e->getMessage());
         }
         $this->redirect(BASE_URL . '/?r=admin/admin/manageProducts');
     }
@@ -306,6 +352,130 @@ class AdminController extends BaseController {
         $this->requireAdministrator();
         $categories = $this->model->getAllCategories();
         View::render(__DIR__ . '/../views/manage_categories.php', ['categories' => $categories, 'flash' => $this->pullFlash(), 'employee' => $_SESSION['employee']]);
+    }
+
+    public function manageBranches(): void {
+        $this->requireAdministrator();
+        View::render(__DIR__ . '/../views/manage_branches.php', [
+            'branches' => $this->model->getAllBranches(),
+            'flash' => $this->pullFlash(),
+            'employee' => $_SESSION['employee'],
+            'navActive' => 'branches',
+            'pageTitle' => 'Branches',
+            'pageHeading' => 'Branches',
+        ]);
+    }
+
+    public function createBranch(): void {
+        $this->requireAdministrator();
+        $data = [
+            'name' => trim($_POST['name'] ?? ''),
+            'location' => trim($_POST['location'] ?? ''),
+            'contact' => trim($_POST['contact'] ?? ''),
+        ];
+        if ($data['name'] === '' || $data['location'] === '' || $data['contact'] === '') {
+            $this->setFlash('danger', 'Branch name, location, and contact are required.');
+        } elseif (strlen($data['contact']) > 15) {
+            $this->setFlash('danger', 'Branch contact must be 15 characters or fewer.');
+        } else {
+            try {
+                if ($this->model->createBranch($data)) {
+                    $this->setFlash('success', 'Branch created.');
+                } else {
+                    $this->setFlash('danger', 'Failed to create branch.');
+                }
+            } catch (Throwable $e) {
+                $this->setFlash('danger', $e->getMessage());
+            }
+        }
+        $this->redirect(BASE_URL . '/?r=admin/admin/manageBranches');
+    }
+
+    public function updateBranch(): void {
+        $this->requireAdministrator();
+        $id = trim($_POST['id'] ?? '');
+        $data = [
+            'name' => trim($_POST['name'] ?? ''),
+            'location' => trim($_POST['location'] ?? ''),
+            'contact' => trim($_POST['contact'] ?? ''),
+        ];
+        if ($id === '' || $data['name'] === '' || $data['location'] === '' || $data['contact'] === '') {
+            $this->setFlash('danger', 'All branch fields are required.');
+        } elseif (strlen($data['contact']) > 15) {
+            $this->setFlash('danger', 'Branch contact must be 15 characters or fewer.');
+        } elseif ($this->model->updateBranch($id, $data)) {
+            $this->setFlash('success', 'Branch updated.');
+        } else {
+            $this->setFlash('danger', 'Failed to update branch.');
+        }
+        $this->redirect(BASE_URL . '/?r=admin/admin/manageBranches');
+    }
+
+    public function deleteBranch(): void {
+        $this->requireAdministrator();
+        $id = trim($_GET['id'] ?? '');
+        if ($id !== '' && $this->model->deleteBranch($id)) {
+            $this->setFlash('success', 'Branch deleted.');
+        } else {
+            $this->setFlash('danger', 'Failed to delete branch. It may still be referenced.');
+        }
+        $this->redirect(BASE_URL . '/?r=admin/admin/manageBranches');
+    }
+
+    public function manageSubcategories(): void {
+        $this->requireAdministrator();
+        View::render(__DIR__ . '/../views/manage_subcategories.php', [
+            'subcategories' => $this->model->getAllSubcategories(),
+            'flash' => $this->pullFlash(),
+            'employee' => $_SESSION['employee'],
+            'navActive' => 'subcategories',
+            'pageTitle' => 'Subcategories',
+            'pageHeading' => 'Subcategories',
+        ]);
+    }
+
+    public function createSubcategory(): void {
+        $this->requireAdministrator();
+        $data = [
+            'name' => trim($_POST['name'] ?? ''),
+            'description' => trim($_POST['description'] ?? ''),
+        ];
+        if ($data['name'] === '') {
+            $this->setFlash('danger', 'Subcategory name is required.');
+        } elseif ($this->model->createSubcategory($data)) {
+            $this->setFlash('success', 'Subcategory created.');
+        } else {
+            $this->setFlash('danger', 'Failed to create subcategory.');
+        }
+        $this->redirect(BASE_URL . '/?r=admin/admin/manageSubcategories');
+    }
+
+    public function updateSubcategory(): void {
+        $this->requireAdministrator();
+        $id = trim($_POST['id'] ?? '');
+        $data = [
+            'name' => trim($_POST['name'] ?? ''),
+            'description' => trim($_POST['description'] ?? ''),
+        ];
+        if ($id === '' || $data['name'] === '') {
+            $this->setFlash('danger', 'Subcategory name is required.');
+        } elseif ($this->model->updateSubcategory($id, $data)) {
+            $this->setFlash('success', 'Subcategory updated.');
+        } else {
+            $this->setFlash('danger', 'Failed to update subcategory.');
+        }
+        $this->redirect(BASE_URL . '/?r=admin/admin/manageSubcategories');
+    }
+
+    public function deleteSubcategory(): void {
+        $this->requireAdministrator();
+        $id = trim($_GET['id'] ?? '');
+        if ($id !== '' && $this->model->deleteSubcategory($id)) {
+            $this->setFlash('success', 'Subcategory deleted.');
+        } else {
+            $this->setFlash('danger', 'Failed to delete subcategory. It may still be assigned to a product.');
+        }
+        $this->redirect(BASE_URL . '/?r=admin/admin/manageSubcategories');
     }
 
     public function createCategory(): void {

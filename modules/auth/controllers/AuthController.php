@@ -68,6 +68,14 @@ class AuthController extends BaseController {
 
         // FIXED: Setup sessions to accurately line up with customer_header.php logic
         if ($role === 'employee') {
+            $employeeRole = $this->normalizeRole((string) $user['Emp_Position']);
+            $redirect = BASE_URL . '/?r=admin/admin/dashboard';
+            if ($employeeRole === 'sales representative') {
+                $redirect = BASE_URL . '/?r=sales/sales/dashboard';
+            } elseif ($employeeRole === 'technician') {
+                $redirect = BASE_URL . '/?r=technician/technician/dashboard';
+            }
+
             $_SESSION['employee'] = [
                 'id'    => $user['Emp_Id'],
                 'name'  => trim($user['Emp_Fname'] . ' ' . $user['Emp_Lname']),
@@ -78,7 +86,7 @@ class AuthController extends BaseController {
             self::jsonOut([
                 'success'  => true,
                 'message'  => 'Welcome back, Staff member!',
-                'redirect' => BASE_URL . '/?r=admin/admin/dashboard'
+                'redirect' => $redirect
             ]);
         } else {
             $_SESSION['user'] = [

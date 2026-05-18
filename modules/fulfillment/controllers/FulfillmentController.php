@@ -23,7 +23,7 @@ class FulfillmentController extends BaseController {
     }
 
     public function complete(): void {
-        $this->requireEmployee(['Administrator', 'Sales Representative']);
+        $this->requireAdministrator();
         $orderId = trim((string) ($_POST['order_id'] ?? ''));
         $this->model->completeOrder($orderId);
         $this->setFlash('success', 'Order marked completed.');

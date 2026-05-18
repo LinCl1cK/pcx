@@ -14,13 +14,22 @@ require dirname(__DIR__, 3) . '/app/views/layouts/employee_begin.php';
 <p class="text-muted small">Limited customer view: name only. Full details remain in the order record.</p>
 <div class="table-responsive bg-white rounded shadow-sm">
   <table class="table table-striped mb-0 align-middle">
-    <thead><tr><th>Order</th><th>Customer</th><th>Total</th><th>Action</th></tr></thead>
+    <thead><tr><th>Order</th><th>Customer</th><th>Total</th><th>ID</th><th>Action</th></tr></thead>
     <tbody>
       <?php foreach ($orders as $order): ?>
       <tr>
         <td><?= htmlspecialchars((string) $order['Order_Id']) ?></td>
         <td><?= htmlspecialchars(trim(($order['Cus_Fname'] ?? '') . ' ' . ($order['Cus_Lname'] ?? ''))) ?></td>
         <td>PHP <?= number_format((float) $order['Order_TotalAmount'], 2) ?></td>
+        <td>
+          <?php if (!empty($order['Cus_IdAttachment'])): ?>
+            <a class="btn btn-sm btn-outline-dark" href="<?= BASE_URL ?>/<?= htmlspecialchars((string) $order['Cus_IdAttachment']) ?>" target="_blank">View ID</a>
+          <?php elseif ((float) $order['Order_TotalAmount'] >= 50000): ?>
+            <span class="badge text-bg-warning">Required</span>
+          <?php else: ?>
+            <span class="text-muted small">Optional</span>
+          <?php endif; ?>
+        </td>
         <td>
           <form method="post" action="<?= BASE_URL ?>/?r=verification/verification/process" class="d-flex flex-wrap gap-2 align-items-center">
             <input type="hidden" name="order_id" value="<?= htmlspecialchars((string) $order['Order_Id']) ?>">

@@ -1,6 +1,8 @@
 <?php
 $product = $product ?? [];
 $categories = $categories ?? [];
+$subcategories = $subcategories ?? [];
+$selectedSubcategories = $selectedSubcategories ?? [];
 $flash = $flash ?? null;
 ?>
 <!doctype html>
@@ -112,10 +114,18 @@ $flash = $flash ?? null;
                             </div>
                             <div class="mb-3">
                                 <label for="cat_id" class="form-label">Category</label>
-                                <select class="form-select" id="cat_id" name="cat_id">
+                                <select class="form-select" id="cat_id" name="cat_id" required>
                                     <option value="">Select Category</option>
                                     <?php foreach ($categories as $cat): ?>
                                     <option value="<?= htmlspecialchars($cat['Cat_Id']) ?>" <?= $product['Prod_CatId'] === $cat['Cat_Id'] ? 'selected' : '' ?>><?= htmlspecialchars($cat['Cat_Name']) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="subcategories" class="form-label">Subcategories</label>
+                                <select class="form-select" id="subcategories" name="subcategories[]" multiple>
+                                    <?php foreach ($subcategories as $subcat): ?>
+                                    <option value="<?= htmlspecialchars($subcat['Subc_Id']) ?>" <?= in_array($subcat['Subc_Id'], $selectedSubcategories, true) ? 'selected' : '' ?>><?= htmlspecialchars($subcat['Subc_Name']) ?></option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
@@ -132,6 +142,7 @@ $flash = $flash ?? null;
                                 <select class="form-select" id="status" name="status" required>
                                     <option value="Active" <?= $product['Prod_Status'] === 'Active' ? 'selected' : '' ?>>Active</option>
                                     <option value="Inactive" <?= $product['Prod_Status'] === 'Inactive' ? 'selected' : '' ?>>Inactive</option>
+                                    <option value="Discontinued" <?= $product['Prod_Status'] === 'Discontinued' ? 'selected' : '' ?>>Discontinued</option>
                                 </select>
                             </div>
                             <div class="mb-3 form-check">

@@ -107,11 +107,19 @@ $flash = $flash ?? null;
                                 <input type="email" class="form-control" id="email" name="email" value="<?= htmlspecialchars($employee_data['Emp_Email']) ?>" required>
                             </div>
                             <div class="mb-3">
+                                <label for="contact" class="form-label">Contact Number</label>
+                                <input type="text" class="form-control" id="contact" name="contact" maxlength="15" value="<?= htmlspecialchars($employee_data['Emp_ContactNo'] ?? '') ?>" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="address" class="form-label">Address</label>
+                                <textarea class="form-control" id="address" name="address" rows="3" maxlength="255" required><?= htmlspecialchars($employee_data['Emp_Address'] ?? '') ?></textarea>
+                            </div>
+                            <div class="mb-3">
                                 <label for="role" class="form-label">Role</label>
                                 <select class="form-select" id="role" name="role" required>
-                                    <option value="Sales Representative" <?= $employee_data['Emp_Role'] === 'Sales Representative' ? 'selected' : '' ?>>Sales Representative</option>
-                                    <option value="Technician" <?= $employee_data['Emp_Role'] === 'Technician' ? 'selected' : '' ?>>Technician</option>
-                                    <option value="Administrator" <?= $employee_data['Emp_Role'] === 'Administrator' ? 'selected' : '' ?>>Administrator</option>
+                                    <option value="Sales Representative" <?= $employee_data['Emp_Position'] === 'Sales Representative' ? 'selected' : '' ?>>Sales Representative</option>
+                                    <option value="Technician" <?= $employee_data['Emp_Position'] === 'Technician' ? 'selected' : '' ?>>Technician</option>
+                                    <option value="Administrator" <?= $employee_data['Emp_Position'] === 'Administrator' ? 'selected' : '' ?>>Administrator</option>
                                 </select>
                             </div>
                             <div class="mb-3">

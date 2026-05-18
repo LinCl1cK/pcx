@@ -1,6 +1,7 @@
 <?php
 $stocks = $stocks ?? [];
 $branches = $branches ?? [];
+$products = $products ?? [];
 $flash = $flash ?? null;
 $readOnly = !empty($readOnly);
 $employee = $employee ?? ($_SESSION['employee'] ?? []);
@@ -41,6 +42,22 @@ require dirname(__DIR__, 3) . '/app/views/layouts/employee_begin.php';
 <?php if (!$readOnly): ?>
 <div class="card border-0 shadow-sm">
   <div class="card-body">
+    <h2 class="h6">Create stock row</h2>
+    <form method="post" action="<?= BASE_URL ?>/?r=inventory/inventory/create" class="row g-2 mb-4">
+      <div class="col-md-3">
+        <select class="form-select" name="Inv_ProdId" required>
+          <?php foreach ($products as $p): ?><option value="<?= htmlspecialchars((string) $p['Prod_Id']) ?>"><?= htmlspecialchars((string) $p['Prod_Name']) ?></option><?php endforeach; ?>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <select class="form-select" name="Inv_BranchId" required>
+          <?php foreach ($branches as $b): ?><option value="<?= htmlspecialchars((string) $b['Branch_Id']) ?>"><?= htmlspecialchars((string) $b['Branch_Name']) ?></option><?php endforeach; ?>
+        </select>
+      </div>
+      <div class="col-md-2"><input class="form-control" type="number" min="0" name="Inv_StockQty" value="0" required></div>
+      <div class="col-md-2"><input class="form-control" type="number" min="0" name="Inv_ReorderLevel" value="10" required></div>
+      <div class="col-md-2"><button class="btn btn-primary w-100" type="submit">Add Stock</button></div>
+    </form>
     <h2 class="h6">Branch transfer</h2>
     <form method="post" action="<?= BASE_URL ?>/?r=inventory/inventory/transfer" class="row g-2">
       <div class="col-md-3"><input class="form-control" name="Inv_ProdId" placeholder="Prod_Id" required></div>

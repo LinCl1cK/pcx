@@ -1,5 +1,6 @@
 <?php
 $user = $user ?? [];
+$customer = $customer ?? [];
 $items = $items ?? [];
 $subtotal = (float) ($subtotal ?? 0);
 $categories = $categories ?? [];
@@ -64,22 +65,24 @@ require_once __DIR__ . '/../../../app/core/header.php';
         </table>
       </div>
       <div class="card border-0 shadow-sm pcx-checkout-card">
-        <div class="card-body d-flex justify-content-between align-items-center">
-          <div>
+        <div class="card-body">
+          <div class="row g-3 align-items-end">
+            <div class="col-lg-5">
             <div class="pcx-summary-row"><span>Subtotal</span><strong>PHP <?= number_format($subtotal, 2) ?></strong></div>
             <div class="pcx-summary-row"><span>VAT (12%)</span><span>PHP <?= number_format($subtotal * 0.12, 2) ?></span></div>
             <div class="pcx-summary-row mb-0"><span>Total Estimate</span><strong>PHP <?= number_format($subtotal * 1.12, 2) ?></strong></div>
+            </div>
+            <form method="get" action="<?= BASE_URL ?>" class="col-lg-7">
+              <input type="hidden" name="r" value="order/order/checkout">
+              <div class="row g-2">
+                <div class="col-md-12">
+                  <button class="btn btn-dark w-100" type="submit">Checkout</button>
+                </div>
+              </div>
+            </form>
           </div>
-          <form method="post" action="<?= BASE_URL ?>/?r=order/order/place" class="d-flex gap-2">
-            <select name="shipping" class="form-select">
-              <option value="Delivery">Delivery</option>
-              <option value="Pickup">Pickup</option>
-            </select>
-            <button class="btn btn-dark" type="submit">Checkout</button>
-          </form>
         </div>
       </div>
     <?php endif; ?>
   </div>
 <?php require_once __DIR__ . '/../../../app/core/footer.php'; ?>
-
