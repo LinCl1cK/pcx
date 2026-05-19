@@ -86,10 +86,15 @@ class AuthController extends BaseController {
                 'email' => $user['Emp_Email'],
                 'role'  => $user['Emp_Position']
             ];
+
+            // ADDED: Save a success flash message into the session registry for the header toast component
+            $_SESSION['flash'] = [
+                'type'    => 'success',
+                'message' => 'Welcome back, Staff member!'
+            ];
             
             self::jsonOut([
                 'success'  => true,
-                'message'  => 'Welcome back, Staff member!',
                 'redirect' => $redirect
             ]);
         } else {
@@ -103,9 +108,14 @@ class AuthController extends BaseController {
             // Capture target path parameter if passed from form submission redirection
             $next = trim($_POST['next'] ?? 'catalog/product/home');
 
+            // ADDED: Save a success flash message into the session registry for the header toast component
+            $_SESSION['flash'] = [
+                'type'    => 'success',
+                'message' => 'Login successful! Welcome back, ' . trim($user['Cus_Fname'] . ' ' . $user['Cus_Lname']) . '.'
+            ];
+
             self::jsonOut([
                 'success'  => true,
-                'message'  => 'Login successful!',
                 'redirect' => BASE_URL . '/?r=' . $next
             ]);
         }
@@ -157,12 +167,11 @@ class AuthController extends BaseController {
         ];
 
         if ($this->model->createCustomer($payload)) {
-            $_SESSION['user'] = [
-                'id'    => $cusId,
-                'email' => $email,
-                'name'  => $fname . ' ' . $lname
-            ];
-            self::jsonOut(['success' => true, 'redirect' => BASE_URL . '/?r=catalog/product/home']);
+            self::jsonOut([
+                'success' => true, 
+                'message' => 'Account created successfully! Please sign in using your new credentials.',
+                'action'  => 'switch_to_login'
+            ]);
         }
 
         self::jsonOut(['success' => false, 'message' => 'Database operation error occurred during profile writing.']);

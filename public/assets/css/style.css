@@ -128,3 +128,36 @@
 .pcx-timeline-dot.active {
   background: #111827;
 }
+
+#authModal ~ .modal-backdrop.show {
+    opacity: 0.75; /* Default is 0.5; raising it dims the underlying page elements further */
+}
+
+/* ==========================================================================
+   GLOBAL STICKY FOOTER LAYOUT
+   ========================================================================== */
+
+/* 1. Force the root window layers to scale to 100% viewport height */
+html, body {
+    min-height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+/* 2. Turn the body into a vertical flexbox column stack */
+body {
+    display: flex;
+    flex-direction: column;
+    min-vh-100: 100vh; /* Safety fallback for standard viewport tracking */
+}
+
+/* 3. Force the main workspace container to expand and swallow empty space */
+main, .main-content, #main-wrapper {
+    flex: 1 0 auto;
+}
+
+/* 4. Ensure the footer stays at the very bottom and never shrinks out of view */
+footer {
+    flex-shrink: 0;
+    margin-top: auto; /* Pushes itself to the bottom if content is short */
+}

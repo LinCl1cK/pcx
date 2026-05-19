@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const iconClass = type === 'success' ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill';
 
         const toastHtml = `
-            <div class="toast align-items-center text-white ${bgClass} border-0 shadow" role="alert" aria-live=\"assertive\" aria-atomic=\"true\" data-bs-delay=\"4000\">
+            <div class="toast align-items-center text-white ${bgClass} border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="4000">
                 <div class="d-flex">
                     <div class="toast-body d-flex align-items-center gap-2">
                         <i class="bi ${iconClass} fs-5"></i>
@@ -30,7 +30,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 </div>
             </div>
         `;
-
         // Turn the string markup into a DOM element node
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = toastHtml.trim();
@@ -87,10 +86,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 return response.json();
             })
             .then(data => {
-                // FIXED: Changed data.status === 'success' to data.success
                 if (data.success) {
-                    // Redirects directly to the path sent back dynamically by the controller logic
-                    window.location.href = data.redirect || window.BASE_URL || '/';
+                    // Check if the backend requested a tab switch instead of a redirect
+                    if (data.action === 'switch_to_login') {
+                        // Show the success toast message sent by the controller (for registration)
+                        showToastNotification('success', data.message || 'Registration successful!');
+                        form.reset();
+                        
+                        const loginTabBtn = document.getElementById('login-tab-btn');
+                        if (loginTabBtn) {
+                            const tabTrigger = new bootstrap.Tab(loginTabBtn);
+                            tabTrigger.show();
+                        }
+                    } else {
+                        // Standard fallback redirection (used for normal logins)
+                        // The destination page will now render the native header success toast automatically via $_SESSION['flash']
+                        window.location.href = data.redirect || window.BASE_URL || '/';
+                    }
                 } else {
                     // Spawn a dynamic toast matching your notification styling engine
                     showToastNotification('danger', data.message || 'Authentication parameters mismatch.');
@@ -115,5 +127,22 @@ document.addEventListener('DOMContentLoaded', function () {
             const bootstrapModal = new bootstrap.Modal(authModalEl);
             bootstrapModal.show();
         }
+    }
+});
+// --- ANTI-JUMP VIEWPORT SCROLL MEMORY SYSTEM ---
+// Captures the user's current exact pixel coordinates right before page submissions/unloads
+window.addEventListener('beforeunload', () => {
+    localStorage.setItem('pcx_scroll_y', window.scrollY);
+});
+
+// Snaps the browser container instantly back down to their target coordinate on load completion
+window.addEventListener('load', () => {
+    const retainedYCoord = localStorage.getItem('pcx_scroll_y');
+    if (retainedYCoord !== null) {
+        window.scrollTo({
+            top: parseInt(retainedYCoord, 10),
+            behavior: 'instant'
+        });
+        localStorage.removeItem('pcx_scroll_y'); // Purge state container safely
     }
 });

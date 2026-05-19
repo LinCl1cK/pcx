@@ -100,7 +100,7 @@ if ($currentEmployee) {
         // Clear it immediately so it doesn't repeat on next page click
         if (isset($_SESSION['flash'])) { unset($_SESSION['flash']); }
   ?>
-    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1100; margin-top: 85px;">
+    <div class="position-fixed top-1 end-0 p-1" style="z-index: 1100;">
       <div id="flashToast" class="toast align-items-center text-white bg-<?= $activeFlash['type'] === 'danger' ? 'danger' : ($activeFlash['type'] === 'success' ? 'success' : 'dark') ?> border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="4000">
         <div class="d-flex">
           <div class="toast-body d-flex align-items-center gap-2">

@@ -110,4 +110,4 @@ require_once __DIR__ . '/../../../app/core/header.php';
     </div>
   </div>
 </body>
-<?php require_once __DIR__ . '/../../../app/core/footer.php'; ?>
+<?php require dirname(__DIR__, 3) . '/app/views/layouts/customer_footer.php'; ?>
