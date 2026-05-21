@@ -3,16 +3,10 @@ $users = $users ?? [];
 $flash = $flash ?? null;
 $employee = $employee ?? ($_SESSION['employee'] ?? []);
 $navActive = 'users';
-$pageTitle = 'Manage Customers';
-$pageHeading = 'Manage customers';
+$pageTitle = $pageTitle ?? 'Customers';
+$pageHeading = 'Manage Customers';
 require dirname(__DIR__, 3) . '/app/views/layouts/employee_begin.php';
 ?>
-        <?php if ($flash): ?>
-        <div class="alert alert-<?= ($flash['type'] ?? '') === 'success' ? 'success' : 'danger' ?> alert-dismissible fade show" role="alert">
-            <?= htmlspecialchars((string) ($flash['message'] ?? '')) ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-        <?php endif; ?>
 
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h2>Manage Users</h2>

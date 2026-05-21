@@ -1,10 +1,11 @@
 <?php
 $employee = $employee ?? ($_SESSION['employee'] ?? []);
-$navActive = $navActive ?? 'permissions';
+$navActive = 'permissions';
 $pageTitle = $pageTitle ?? 'Roles';
-$pageHeading = $pageHeading ?? 'Roles & permissions';
+$pageHeading = $pageHeading ?? 'Roles & Permissions';
 require dirname(__DIR__, 3) . '/app/views/layouts/employee_begin.php';
 ?>
+
 <p class="text-muted small">Enforcement is in application code (BaseController) and database triggers. This page summarizes intent.</p>
 <div class="table-responsive bg-white rounded shadow-sm">
   <table class="table table-bordered mb-0 align-middle">

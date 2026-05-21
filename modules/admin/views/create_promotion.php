@@ -6,9 +6,15 @@ $pageTitle = $pageTitle ?? 'New promotion';
 $pageHeading = $pageHeading ?? 'New promotion';
 require dirname(__DIR__, 3) . '/app/views/layouts/employee_begin.php';
 ?>
-<?php if ($flash): ?>
-  <div class="alert alert-<?= ($flash['type'] ?? '') === 'success' ? 'success' : 'danger' ?>"><?= htmlspecialchars((string) ($flash['message'] ?? '')) ?></div>
-<?php endif; ?>
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Create Promotion</title>
+</head>
+<body>
 <form method="post" action="<?= BASE_URL ?>/?r=admin/admin/createPromotion" class="card border-0 shadow-sm" style="max-width:560px">
   <div class="card-body">
     <div class="mb-2">
@@ -39,6 +45,6 @@ require dirname(__DIR__, 3) . '/app/views/layouts/employee_begin.php';
     </div>
     <button class="btn btn-dark" type="submit">Save</button>
     <a class="btn btn-outline-secondary" href="<?= BASE_URL ?>/?r=admin/admin/managePromotions">Cancel</a>
-  </div>
+  ov>
 </form>
 <?php require dirname(__DIR__, 3) . '/app/views/layouts/employee_end.php'; ?>

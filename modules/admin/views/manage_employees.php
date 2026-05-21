@@ -2,86 +2,12 @@
 $employees = $employees ?? [];
 $branches = $branches ?? [];
 $flash = $flash ?? null;
+$employee = $employee ?? ($_SESSION['employee'] ?? []);
+$navActive = 'employees';
+$pageTitle = $pageTitle ?? 'Employees';
+$pageHeading = $pageHeading ?? 'Manage Employees';
+require dirname(__DIR__, 3) . '/app/views/layouts/employee_begin.php';
 ?>
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <title>Manage Employees</title>
-</head>
-<body class="bg-light">
-    <!-- Header -->
-    <header class="bg-primary text-white py-3">
-        <div class="container">
-            <div class="d-flex justify-content-between align-items-center">
-                <h1 class="h4 mb-0">PCX Employee Dashboard - Manage Employees</h1>
-                <div class="d-flex align-items-center">
-                    <span class="me-3">Welcome, <?= htmlspecialchars((string) ($employee['name'] ?? '')) ?> (<?= htmlspecialchars((string) ($employee['role'] ?? '')) ?>)</span>
-                    <a class="btn btn-outline-light btn-sm" href="<?= BASE_URL ?>/?r=auth/auth/employeeLogout">Logout</a>
-                </div>
-            </div>
-        </div>
-    </header>
-
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link" href="<?= BASE_URL ?>/?r=admin/admin/dashboard">Dashboard</a>
-                    </li>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle active" href="#" id="userManagementDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            User Management
-                        </a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="<?= BASE_URL ?>/?r=admin/admin/manageUsers">Manage Users</a></li>
-                            <li><a class="dropdown-item active" href="<?= BASE_URL ?>/?r=admin/admin/manageEmployees">Manage Employees</a></li>
-                        </ul>
-                    </li>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="productManagementDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            Product Management
-                        </a>
-                        <ul class="dropdown-menu" aria-labelledby="productManagementDropdown">
-                            <li><a class="dropdown-item" href="<?= BASE_URL ?>/?r=admin/admin/manageProducts">Manage Products</a></li>
-                            <li><a class="dropdown-item" href="<?= BASE_URL ?>/?r=admin/admin/manageCategories">Manage Categories</a></li>
-                        </ul>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="<?= BASE_URL ?>/?r=verification/verification/index">Manual Verification</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="<?= BASE_URL ?>/?r=fulfillment/fulfillment/index">Fulfillment</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="<?= BASE_URL ?>/?r=service/service/index">Service Tickets</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="<?= BASE_URL ?>/?r=order/order/index">Orders</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="<?= BASE_URL ?>/?r=inventory/inventory/index">Inventory</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Main Content -->
-    <main class="container py-4">
-        <?php if ($flash): ?>
-        <div class="alert alert-<?= $flash['type'] === 'success' ? 'success' : 'danger' ?> alert-dismissible fade show" role="alert">
-            <?= htmlspecialchars($flash['message']) ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-        <?php endif; ?>
 
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h2>Manage Employees</h2>
@@ -121,13 +47,4 @@ $flash = $flash ?? null;
         </div>
     </main>
 
-    <!-- Footer -->
-    <footer class="bg-dark text-white py-3 mt-5">
-        <div class="container text-center">
-            <p class="mb-0">&copy; 2026 PCX. All rights reserved.</p>
-        </div>
-    </footer>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+    <?php require dirname(__DIR__, 3) . '/app/views/layouts/employee_end.php'; ?>
