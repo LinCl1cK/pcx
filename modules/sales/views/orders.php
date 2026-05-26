@@ -3,80 +3,85 @@ $orders = $orders ?? [];
 $flash = $flash ?? null;
 $employee = $employee ?? ($_SESSION['employee'] ?? []);
 $navActive = $navActive ?? 'orders';
-$pageTitle = $pageTitle ?? 'Sales Orders';
-$pageHeading = $pageHeading ?? 'Orders';
+$pageTitle = $pageTitle ?? 'Sales Orders — PCX Admin';
+$pageHeading = $pageHeading ?? 'Order Pipeline';
+$pageSubtitle = 'Process, confirm, or safely cancel incoming customer purchases.';
 $employeeId = (string) ($employee['id'] ?? '');
 require dirname(__DIR__, 3) . '/app/views/layouts/employee_begin.php';
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PCX Store</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
-  <link href="<?= BASE_URL ?>/assets/css/style.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" defer></script>
-  <script src="<?= BASE_URL ?>/assets/js/main.js" defer></script>
-</head>
-<body>
-  <?php if ($flash): ?>
-    <div class="alert alert-<?= ($flash['type'] ?? '') === 'success' ? 'success' : 'danger' ?>"><?= htmlspecialchars((string) ($flash['message'] ?? '')) ?></div>
-  <?php endif; ?>
 
-  <div class="table-responsive bg-white rounded shadow-sm">
-    <table class="table table-striped align-middle mb-0">
-      <thead>
-        <tr><th>Order</th><th>Invoice</th><th>Customer</th><th>Status</th><th>Total</th><th>ID</th><th>Verified By</th><th>Action</th></tr>
-      </thead>
-      <tbody>
-        <?php foreach ($orders as $order): ?>
-          <tr>
-            <td><?= htmlspecialchars((string) $order['Order_Id']) ?></td>
-            <td><?= htmlspecialchars((string) $order['Order_InvoiceNo']) ?></td>
-            <td>
-              <?= htmlspecialchars(trim(($order['Cus_Fname'] ?? '') . ' ' . ($order['Cus_Lname'] ?? ''))) ?>
-              <div class="small text-muted"><?= htmlspecialchars((string) ($order['Cus_Email'] ?? '')) ?></div>
-            </td>
-            <td><?= htmlspecialchars((string) $order['Order_Status']) ?></td>
-            <td>PHP <?= number_format((float) $order['Order_TotalAmount'], 2) ?></td>
-            <td>
-              <?php if (!empty($order['Cus_IdAttachment'])): ?>
-                <a class="btn btn-sm btn-outline-dark" href="<?= BASE_URL ?>/<?= htmlspecialchars((string) $order['Cus_IdAttachment']) ?>" target="_blank">View</a>
-              <?php elseif ((float) $order['Order_TotalAmount'] >= 50000): ?>
-                <span class="badge text-bg-warning">Required</span>
-              <?php else: ?>
-                <span class="text-muted small">Optional</span>
-              <?php endif; ?>
-            </td>
-            <td><?= htmlspecialchars(trim(($order['Emp_Fname'] ?? '') . ' ' . ($order['Emp_Lname'] ?? '')) ?: '-') ?></td>
-            <td>
-              <?php if ($order['Order_Status'] === 'Pending'): ?>
-                <form method="post" action="<?= BASE_URL ?>/?r=sales/sales/confirm" class="d-inline">
-                  <input type="hidden" name="order_id" value="<?= htmlspecialchars((string) $order['Order_Id']) ?>">
-                  <?php if ((float) $order['Order_TotalAmount'] >= 50000): ?>
-                    <label class="small me-1"><input class="form-check-input me-1" type="checkbox" name="id_verified" value="1">ID</label>
-                  <?php endif; ?>
-                  <button class="btn btn-sm btn-dark" type="submit">Confirm</button>
-                </form>
-                <form method="post" action="<?= BASE_URL ?>/?r=sales/sales/cancel" class="d-inline">
-                  <input type="hidden" name="order_id" value="<?= htmlspecialchars((string) $order['Order_Id']) ?>">
-                  <button class="btn btn-sm btn-outline-danger" type="submit" onclick="return confirm('Cancel this order?')">Cancel</button>
-                </form>
-              <?php elseif ($order['Order_Status'] === 'Confirmed' && (string) ($order['Order_VerifiedBy'] ?? '') === $employeeId): ?>
-                <form method="post" action="<?= BASE_URL ?>/?r=sales/sales/cancel" class="d-inline">
-                  <input type="hidden" name="order_id" value="<?= htmlspecialchars((string) $order['Order_Id']) ?>">
-                  <button class="btn btn-sm btn-outline-danger" type="submit" onclick="return confirm('Cancel this confirmed order?')">Cancel</button>
-                </form>
-              <?php else: ?>
-                <span class="text-muted small">Read-only</span>
-              <?php endif; ?>
-            </td>
-          </tr>
-        <?php endforeach; ?>
-      </tbody>
-    </table>
+<div class="card border-0 shadow-sm bg-white">
+  <div class="card-header bg-white py-3">
+    <span class="fw-bold text-dark"><i class="bi bi-cart-check text-blue me-2"></i>Sales Orders</span>
   </div>
-</body>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0" style="font-size: .875rem;">
+        <thead class="table-light text-secondary small text-uppercase" style="letter-spacing: 0.5px;">
+          <tr>
+            <th class="ps-4 py-3">ID / Invoice</th>
+            <th>Customer Name</th>
+            <th>Status</th>
+            <th>Total Amount</th>
+            <th>ID Check</th>
+            <th class="text-end pe-4">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php foreach ($orders as $order): ?>
+            <tr>
+              <td class="ps-4">
+                <span class="d-block fw-medium text-dark">#<?= htmlspecialchars((string) $order['Order_Id']) ?></span>
+                <span class="text-muted font-monospace" style="font-size: 0.75rem;"><?= htmlspecialchars((string) $order['Order_InvoiceNo']) ?></span>
+              </td>
+              <td>
+                <span class="fw-bold text-dark d-block"><?= htmlspecialchars(trim(($order['Cus_Fname'] ?? '') . ' ' . ($order['Cus_Lname'] ?? ''))) ?></span>
+                <span class="text-secondary" style="font-size: 0.75rem;"><?= htmlspecialchars((string) ($order['Cus_Email'] ?? '')) ?></span>
+              </td>
+              <td><span class="badge bg-light text-secondary border px-2 py-1"><?= htmlspecialchars((string) $order['Order_Status']) ?></span></td>
+              <td class="fw-bold text-blue">PHP <?= number_format((float) $order['Order_TotalAmount'], 2) ?></td>
+              <td>
+                <?php if (!empty($order['Cus_IdAttachment'])): ?>
+                  <a class="badge bg-blue-light text-blue text-decoration-none" href="<?= BASE_URL ?>/<?= htmlspecialchars((string) $order['Cus_IdAttachment']) ?>" target="_blank"><i class="bi bi-file-earmark-person me-1"></i>View File</a>
+                <?php elseif ((float) $order['Order_TotalAmount'] >= 50000): ?>
+                  <span class="badge bg-red-light text-red"><i class="bi bi-exclamation-circle me-1"></i>Required</span>
+                <?php else: ?>
+                  <span class="text-muted small">Optional</span>
+                <?php endif; ?>
+              </td>
+              <td class="text-end pe-4">
+                <?php if ($order['Order_Status'] === 'Pending'): ?>
+                  <div class="d-inline-flex gap-2 align-items-center">
+                    <form method="post" action="<?= BASE_URL ?>/?r=sales/sales/confirm" class="m-0 d-flex align-items-center gap-2">
+                      <input type="hidden" name="order_id" value="<?= htmlspecialchars((string) $order['Order_Id']) ?>">
+                      <?php if ((float) $order['Order_TotalAmount'] >= 50000): ?>
+                        <div class="form-check m-0">
+                          <input class="form-check-input" type="checkbox" name="id_verified" value="1" id="id_<?= $order['Order_Id'] ?>">
+                          <label class="form-check-label small" for="id_<?= $order['Order_Id'] ?>">Verified</label>
+                        </div>
+                      <?php endif; ?>
+                      <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-check-lg me-1"></i>Confirm</button>
+                    </form>
+                    <form method="post" action="<?= BASE_URL ?>/?r=sales/sales/cancel" class="m-0">
+                      <input type="hidden" name="order_id" value="<?= htmlspecialchars((string) $order['Order_Id']) ?>">
+                      <button class="btn btn-sm btn-outline-danger" type="submit" onclick="return confirm('Cancel this order?')"><i class="bi bi-x-lg"></i></button>
+                    </form>
+                  </div>
+                <?php elseif ($order['Order_Status'] === 'Confirmed' && (string) ($order['Order_VerifiedBy'] ?? '') === $employeeId): ?>
+                  <form method="post" action="<?= BASE_URL ?>/?r=sales/sales/cancel" class="m-0">
+                    <input type="hidden" name="order_id" value="<?= htmlspecialchars((string) $order['Order_Id']) ?>">
+                    <button class="btn btn-sm btn-outline-danger" type="submit" onclick="return confirm('Cancel this confirmed order?')"><i class="bi bi-x-lg me-1"></i>Cancel</button>
+                  </form>
+                <?php else: ?>
+                  <span class="text-muted small">Locked</span>
+                <?php endif; ?>
+              </td>
+            </tr>
+          <?php endforeach; ?>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <?php require dirname(__DIR__, 3) . '/app/views/layouts/employee_end.php'; ?>

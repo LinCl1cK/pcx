@@ -1,50 +1,91 @@
 <?php
-$flash = $flash ?? null;
-$employee = $employee ?? ($_SESSION['employee'] ?? []);
-$navActive = 'promotions';
-$pageTitle = $pageTitle ?? 'New promotion';
-$pageHeading = $pageHeading ?? 'New promotion';
+$flash       = $flash    ?? null;
+$employee    = $employee ?? ($_SESSION['employee'] ?? []);
+$navActive   = 'promotions';
+$pageTitle   = $pageTitle   ?? 'New Promotion — PCX Admin';
+$pageHeading = $pageHeading ?? 'Create Promotion';
+$pageSubtitle = 'Set up a new marketing promotion or sale event.';
 require dirname(__DIR__, 3) . '/app/views/layouts/employee_begin.php';
 ?>
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <title>Create Promotion</title>
-</head>
-<body>
-<form method="post" action="<?= BASE_URL ?>/?r=admin/admin/createPromotion" class="card border-0 shadow-sm" style="max-width:560px">
-  <div class="card-body">
-    <div class="mb-2">
-      <label class="form-label">Title *</label>
-      <input name="title" class="form-control" required maxlength="255">
-    </div>
-    <div class="mb-2">
-      <label class="form-label">Description</label>
-      <textarea name="description" class="form-control" rows="2"></textarea>
-    </div>
-    <div class="mb-2">
-      <label class="form-label">Banner image filename *</label>
-      <input name="banner" class="form-control" required placeholder="e.g. promo1.webp">
-    </div>
-    <div class="mb-2">
-      <label class="form-label">Status</label>
-      <select name="status" class="form-select"><option>Active</option><option>Inactive</option></select>
-    </div>
-    <div class="row g-2 mb-2">
-      <div class="col-md-6">
-        <label class="form-label">Start date</label>
-        <input type="date" name="start" class="form-control">
+
+<div style="max-width:700px;">
+  <form method="post" action="<?= BASE_URL ?>/?r=admin/admin/createPromotion">
+    <div style="display:flex;flex-direction:column;gap:1.1rem;">
+
+      <!-- ── Promotion Details ── -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title"><i class="bi bi-megaphone" style="color:var(--blue);margin-right:.4rem;"></i>Promotion Details</span>
+          <a href="<?= BASE_URL ?>/?r=admin/admin/managePromotions" class="btn btn-sm btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back
+          </a>
+        </div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:1rem;">
+
+          <div>
+            <label class="form-label" for="title">Promotion Title <span style="color:var(--red)">*</span></label>
+            <input type="text" class="form-control" id="title" name="title"
+              placeholder="e.g. Mid-Year Mega Sale" maxlength="255" required>
+          </div>
+
+          <div>
+            <label class="form-label" for="description">Description</label>
+            <textarea class="form-control" id="description" name="description" rows="2"
+              placeholder="Briefly describe this promotion for internal reference…"></textarea>
+          </div>
+
+          <div>
+            <label class="form-label" for="banner">Banner Image Filename <span style="color:var(--red)">*</span></label>
+            <input type="text" class="form-control" id="banner" name="banner"
+              placeholder="e.g. midyear-sale-2025.webp" required>
+            <p class="form-hint">Enter only the filename. The file must already be uploaded to <code>/assets/banners/</code>.</p>
+          </div>
+
+          <div>
+            <label class="form-label" for="status">Status</label>
+            <select class="form-select" id="status" name="status" style="max-width:200px;">
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+          </div>
+
+        </div>
       </div>
-      <div class="col-md-6">
-        <label class="form-label">End date</label>
-        <input type="date" name="end" class="form-control">
+
+      <!-- ── Schedule ── -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title"><i class="bi bi-calendar-event" style="color:var(--blue);margin-right:.4rem;"></i>Schedule</span>
+        </div>
+        <div class="card-body" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem 1.25rem;">
+
+          <div>
+            <label class="form-label" for="start">Start Date</label>
+            <input type="date" class="form-control" id="start" name="start">
+          </div>
+          <div>
+            <label class="form-label" for="end">End Date</label>
+            <input type="date" class="form-control" id="end" name="end">
+          </div>
+          <div style="grid-column:1/-1;">
+            <p class="form-hint">Leave blank for an open-ended promotion.</p>
+          </div>
+
+        </div>
       </div>
+
+      <!-- ── Actions ── -->
+      <div style="display:flex;gap:.6rem;justify-content:flex-end;">
+        <a href="<?= BASE_URL ?>/?r=admin/admin/managePromotions" class="btn btn-secondary">
+          <i class="bi bi-x"></i> Cancel
+        </a>
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-megaphone"></i> Create Promotion
+        </button>
+      </div>
+
     </div>
-    <button class="btn btn-dark" type="submit">Save</button>
-    <a class="btn btn-outline-secondary" href="<?= BASE_URL ?>/?r=admin/admin/managePromotions">Cancel</a>
-  ov>
-</form>
+  </form>
+</div>
+
 <?php require dirname(__DIR__, 3) . '/app/views/layouts/employee_end.php'; ?>

@@ -1,9 +1,11 @@
 <?php
+
 /** Shared document head (Bootstrap 5). Expects $pageTitle */
 $pageTitle = $pageTitle ?? 'PCX';
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,4 +14,5 @@ $pageTitle = $pageTitle ?? 'PCX';
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
   <link href="<?= BASE_URL ?>/assets/css/style.css" rel="stylesheet">
 </head>
+
 <body class="bg-light">

@@ -18,7 +18,7 @@ class TechnicianController extends BaseController {
     public function dashboard(): void {
         $this->requireTechnicianRole();
         $emp = $_SESSION['employee'];
-        View::render(__DIR__ . '/../views/dashboard.php', [
+        View::render(__DIR__ . '/../views/tech_dashboard.php', [
             'employee' => $emp,
             'summary' => $this->model->dashboardSummary((string) $emp['id']),
             'tickets' => $this->model->getAssignedTickets((string) $emp['id'], 8),

@@ -170,7 +170,7 @@ class OrderController extends BaseController {
         $orders = $this->isAdministrator()
             ? $this->model->listAllOrders()
             : $this->model->listOrdersForSalesRep((string) $emp['id']);
-        View::render(__DIR__ . '/../views/staff_index.php', [
+        View::render(__DIR__ . '/../views/orders_staff_index.php', [
             'orders' => $orders,
             'employee' => $emp,
             'navActive' => 'orders',

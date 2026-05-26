@@ -19,7 +19,7 @@ class InventoryController extends BaseController {
         $this->requireEmployee();
         $readOnly = !$this->isAdministrator();
         $stocks = $this->model->getAllInventory();
-        View::render(__DIR__ . '/../views/list.php', [
+        View::render(__DIR__ . '/../views/inventory_list.php', [
             'stocks' => $stocks,
             'branches' => $this->model->getBranches(),
             'products' => $this->model->getProducts(),
@@ -28,7 +28,6 @@ class InventoryController extends BaseController {
             'employee' => $_SESSION['employee'],
             'navActive' => 'inventory',
             'pageTitle' => 'Inventory',
-            'pageHeading' => 'Branch inventory',
         ]);
     }
 
@@ -47,12 +46,11 @@ class InventoryController extends BaseController {
         } else {
             $id = $_GET['id'] ?? null;
             $stock = $this->model->getInventoryById((string) $id);
-            View::render(__DIR__ . '/../views/edit.php', [
+            View::render(__DIR__ . '/../views/inventory_edit.php', [
                 'stock' => $stock,
                 'employee' => $_SESSION['employee'],
                 'navActive' => 'inventory',
                 'pageTitle' => 'Edit inventory',
-                'pageHeading' => 'Edit inventory',
             ]);
         }
     }

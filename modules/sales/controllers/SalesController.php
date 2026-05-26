@@ -12,13 +12,13 @@ class SalesController extends BaseController {
     }
 
     private function requireSales(): void {
-        $this->requireEmployee(['Sales Representative']);
+        $this->requireEmployee(['Sales Representative', 'Administrator']);
     }
 
     public function dashboard(): void {
         $this->requireSales();
         $emp = $_SESSION['employee'];
-        View::render(__DIR__ . '/../views/dashboard.php', [
+        View::render(__DIR__ . '/../views/sales_dashboard.php', [
             'employee' => $emp,
             'summary' => $this->model->dashboardSummary((string) $emp['id']),
             'pendingOrders' => $this->model->getPendingOrders(),
@@ -31,7 +31,8 @@ class SalesController extends BaseController {
 
     public function orders(): void {
         $this->requireSales();
-        View::render(__DIR__ . '/../views/orders.php', [
+        View::render(dirname(__DIR__, 2) . '/order/views/orders_staff_index.php', [
+        //View::render(__DIR__ . '/../views/orders.php', [
             'employee' => $_SESSION['employee'],
             'orders' => $this->model->getOrdersForSalesRep((string) $_SESSION['employee']['id']),
             'flash' => $this->pullFlash(),
@@ -43,7 +44,8 @@ class SalesController extends BaseController {
 
     public function verification(): void {
         $this->requireSales();
-        View::render(__DIR__ . '/../views/orders.php', [
+        View::render(dirname(__DIR__, 2) . '/order/views/orders_staff_index.php', [
+        // View::render(__DIR__ . '/../views/orders.php', [
             'employee' => $_SESSION['employee'],
             'orders' => $this->model->getOrdersForSalesRep((string) $_SESSION['employee']['id']),
             'flash' => $this->pullFlash(),
@@ -79,7 +81,8 @@ class SalesController extends BaseController {
 
     public function payments(): void {
         $this->requireSales();
-        View::render(__DIR__ . '/../views/payments.php', [
+        View::render(dirname(__DIR__, 2) . '/payment/views/payment_staff_index.php', [
+        // View::render(__DIR__ . '/../views/payments.php', [
             'employee' => $_SESSION['employee'],
             'payments' => $this->model->getPayments(),
             'flash' => $this->pullFlash(),
@@ -91,7 +94,8 @@ class SalesController extends BaseController {
 
     public function fulfillment(): void {
         $this->requireSales();
-        View::render(__DIR__ . '/../views/fulfillment.php', [
+        View::render(dirname(__DIR__, 2) . '/fulfillment/views/fulfillment_index.php', [
+        // View::render(__DIR__ . '/../views/fulfillment.php', [
             'employee' => $_SESSION['employee'],
             'orders' => $this->model->getPaidOrders(),
             'flash' => $this->pullFlash(),
@@ -103,7 +107,8 @@ class SalesController extends BaseController {
 
     public function inventory(): void {
         $this->requireSales();
-        View::render(__DIR__ . '/../views/inventory.php', [
+        View::render(dirname(__DIR__, 2) . '/inventory/views/inventory_list.php', [
+        // View::render(__DIR__ . '/../views/inventory.php', [
             'employee' => $_SESSION['employee'],
             'stocks' => $this->model->getInventory(),
             'navActive' => 'inventory',

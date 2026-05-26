@@ -13,7 +13,7 @@ class VerificationController extends BaseController {
 
     public function index(): void {
         $this->requireEmployee(['Administrator', 'Sales Representative']);
-        View::render(__DIR__ . '/../views/index.php', [
+        View::render(__DIR__ . '/../views/verification_index.php', [
             'orders' => $this->model->getPendingOrders(),
             'employee' => $_SESSION['employee'],
             'navActive' => 'verification',

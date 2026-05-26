@@ -13,13 +13,10 @@ class FulfillmentController extends BaseController {
 
     public function index(): void {
         $this->requireEmployee(['Administrator', 'Sales Representative']);
-        View::render(__DIR__ . '/../views/index.php', [
+        View::render(__DIR__ . '/../views/fulfillment_index.php', [
             'orders' => $this->model->getPaidOrders(),
             'employee' => $_SESSION['employee'],
             'flash' => $this->pullFlash(),
-            'navActive' => 'fulfillment',
-            'pageTitle' => 'Fulfillment',
-            'pageHeading' => 'Fulfillment queue',
         ]);
     }
 

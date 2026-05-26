@@ -21,8 +21,6 @@ if ($currentEmployee) {
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
   <link href="<?= BASE_URL ?>/assets/css/style.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" defer></script>
-  <script src="<?= BASE_URL ?>/assets/js/main.js" defer></script>
 </head>
 <body class="pcx-body">
   <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom px-2 sticky-top pcx-header">

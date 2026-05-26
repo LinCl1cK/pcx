@@ -267,6 +267,7 @@ CREATE TABLE `service_ticket` (
   `Tix_CusId` char(10) NOT NULL,
   `Tix_OrderID` char(10) DEFAULT NULL,
   `Tix_ProblemInfo` varchar(255) NOT NULL,
+  `Tix_Attachment` VARCHAR(255) NULL,
   `Tix_Status` enum('Pending','In Progress','Completed') NOT NULL,
   `Tix_CreatedAt` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `Tix_DateCompleted` timestamp NULL DEFAULT NULL,

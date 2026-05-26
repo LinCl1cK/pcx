@@ -1,7 +1,5 @@
 <?php
 $employee = $employee ?? ($_SESSION['employee'] ?? []);
-$pageTitle = $pageTitle ?? 'PCX Staff';
-require __DIR__ . '/header.php';
 ?>
 <header class="bg-primary text-white py-3">
   <div class="container-fluid px-3">
@@ -11,5 +9,5 @@ require __DIR__ . '/header.php';
     </div>
   </div>
 </header>
-<?php require __DIR__ . '/nav.php'; ?>
 <main class="container-fluid px-3 py-4">
+  <?php require __DIR__ . '/nav.php'; ?>

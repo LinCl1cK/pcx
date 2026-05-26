@@ -197,7 +197,7 @@ class PaymentController extends BaseController {
     public function index(): void {
         $this->requireStaffOrdersPayments();
         $payments = $this->model->listAllWithOrders();
-        View::render(__DIR__ . '/../views/staff_index.php', [
+        View::render(__DIR__ . '/../views/payment_staff_index.php', [
             'payments' => $payments,
             'employee' => $_SESSION['employee'],
             'flash' => $this->pullFlash(),

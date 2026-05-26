@@ -1,111 +1,156 @@
 <?php
+
 /**
- * Employee area navigation. Expects:
- * - $employee (array from $_SESSION['employee'])
- * - $navActive (string key: dashboard|users|products|categories|verification|payments|fulfillment|service|orders|inventory)
+ * PCX Admin — Integrated Navigation Component
  */
-$employee = $employee ?? ($_SESSION['employee'] ?? []);
+$employee  = $employee  ?? ($_SESSION['employee'] ?? []);
 $navActive = $navActive ?? '';
-$role = strtolower((string) ($employee['role'] ?? ''));
-$isAdmin = $role === 'administrator';
-$isSales = $role === 'sales representative';
-$isTech = $role === 'technician';
+$role      = strtolower((string)($employee['role'] ?? ''));
+$isAdmin   = $role === 'administrator';
+$isSales   = $role === 'sales representative';
+$isTech    = $role === 'technician';
+
 $dashboardHref = BASE_URL . '/?r=admin/admin/dashboard';
-if ($isSales) {
-    $dashboardHref = BASE_URL . '/?r=sales/sales/dashboard';
-} elseif ($isTech) {
-    $dashboardHref = BASE_URL . '/?r=technician/technician/dashboard';
+if ($isSales) $dashboardHref = BASE_URL . '/?r=sales/sales/dashboard';
+elseif ($isTech) $dashboardHref = BASE_URL . '/?r=technician/technician/dashboard';
+
+function navLink(string $href, string $icon, string $label, bool $active): string
+{
+  $cls = $active ? 'nav-link active' : 'nav-link';
+  return "<li>
+              <a class=\"{$cls}\" href=\"{$href}\">
+                <i class=\"bi {$icon}\"></i>
+                <span>{$label}</span>
+              </a>
+            </li>";
 }
 ?>
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom">
-  <div class="container-fluid px-3">
-    <a class="navbar-brand" href="<?= $dashboardHref ?>">PCX Staff</a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#empNav">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="empNav">
-      <ul class="navbar-nav me-auto mb-2 mb-lg-0 flex-wrap">
-        <?php if ($isAdmin): ?>
-          <li class="nav-item"><a class="nav-link <?= $navActive === 'dashboard' ? 'active' : '' ?>" href="<?= BASE_URL ?>/?r=admin/admin/dashboard">Dashboard</a></li>
-          <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle <?= in_array($navActive, ['users', 'employees'], true) ? 'active' : '' ?>" href="#" data-bs-toggle="dropdown">Users</a>
-            <ul class="dropdown-menu">
-              <li><a class="dropdown-item" href="<?= BASE_URL ?>/?r=admin/admin/manageUsers">Customers</a></li>
-              <li><a class="dropdown-item" href="<?= BASE_URL ?>/?r=admin/admin/manageEmployees">Employees</a></li>
-            </ul>
-          </li>
-          <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle <?= in_array($navActive, ['products', 'categories', 'subcategories', 'promotions'], true) ? 'active' : '' ?>" href="#" data-bs-toggle="dropdown">Catalog</a>
-            <ul class="dropdown-menu">
-              <li><a class="dropdown-item" href="<?= BASE_URL ?>/?r=admin/admin/manageProducts">Products</a></li>
-              <li><a class="dropdown-item" href="<?= BASE_URL ?>/?r=admin/admin/manageCategories">Categories</a></li>
-              <li><a class="dropdown-item" href="<?= BASE_URL ?>/?r=admin/admin/manageSubcategories">Subcategories</a></li>
-              <li><a class="dropdown-item" href="<?= BASE_URL ?>/?r=admin/admin/managePromotions">Promotions</a></li>
-            </ul>
-          </li>
-          <li class="nav-item"><a class="nav-link <?= $navActive === 'branches' ? 'active' : '' ?>" href="<?= BASE_URL ?>/?r=admin/admin/manageBranches">Branches</a></li>
-          <li class="nav-item"><a class="nav-link <?= $navActive === 'permissions' ? 'active' : '' ?>" href="<?= BASE_URL ?>/?r=admin/admin/managePermissions">Roles</a></li>
-          <li class="nav-item"><a class="nav-link <?= $navActive === 'orders' ? 'active' : '' ?>" href="<?= BASE_URL ?>/?r=order/order/index">Orders</a></li>
-          <li class="nav-item"><a class="nav-link <?= $navActive === 'payments' ? 'active' : '' ?>" href="<?= BASE_URL ?>/?r=payment/payment/index">Payments</a></li>
-          <li class="nav-item"><a class="nav-link <?= $navActive === 'fulfillment' ? 'active' : '' ?>" href="<?= BASE_URL ?>/?r=fulfillment/fulfillment/index">Fulfillment</a></li>
-          <li class="nav-item"><a class="nav-link <?= $navActive === 'verification' ? 'active' : '' ?>" href="<?= BASE_URL ?>/?r=verification/verification/index">Verification</a></li>
-          <li class="nav-item"><a class="nav-link <?= $navActive === 'service' ? 'active' : '' ?>" href="<?= BASE_URL ?>/?r=service/service/index">Service Tickets</a></li>
-          <li class="nav-item"><a class="nav-link <?= $navActive === 'inventory' ? 'active' : '' ?>" href="<?= BASE_URL ?>/?r=inventory/inventory/index">Inventory</a></li>
-        <?php elseif ($isSales): ?>
-          <li class="nav-item"><a class="nav-link <?= $navActive === 'dashboard' ? 'active' : '' ?>" href="<?= BASE_URL ?>/?r=sales/sales/dashboard">Dashboard</a></li>
-          <li class="nav-item"><a class="nav-link <?= $navActive === 'orders' ? 'active' : '' ?>" href="<?= BASE_URL ?>/?r=sales/sales/orders">Orders</a></li>
-          <li class="nav-item"><a class="nav-link <?= $navActive === 'verification' ? 'active' : '' ?>" href="<?= BASE_URL ?>/?r=sales/sales/verification">Verification</a></li>
-          <li class="nav-item"><a class="nav-link <?= $navActive === 'payments' ? 'active' : '' ?>" href="<?= BASE_URL ?>/?r=sales/sales/payments">Payments</a></li>
-          <li class="nav-item"><a class="nav-link <?= $navActive === 'fulfillment' ? 'active' : '' ?>" href="<?= BASE_URL ?>/?r=sales/sales/fulfillment">Fulfillment</a></li>
-          <li class="nav-item"><a class="nav-link <?= $navActive === 'inventory' ? 'active' : '' ?>" href="<?= BASE_URL ?>/?r=sales/sales/inventory">Inventory</a></li>
-        <?php elseif ($isTech): ?>
-          <li class="nav-item"><a class="nav-link <?= $navActive === 'dashboard' ? 'active' : '' ?>" href="<?= BASE_URL ?>/?r=technician/technician/dashboard">Dashboard</a></li>
-          <li class="nav-item"><a class="nav-link <?= $navActive === 'service' ? 'active' : '' ?>" href="<?= BASE_URL ?>/?r=technician/technician/tickets">Service Tickets</a></li>
-        <?php endif; ?>
-      </ul>
-      <div class="d-flex align-items-center text-white-50 small me-3">
-        <?= htmlspecialchars((string) ($employee['name'] ?? '')) ?>
-        <span class="mx-2">·</span>
-        <?= htmlspecialchars((string) ($employee['role'] ?? '')) ?>
-      </div>
-      <a class="btn btn-outline-light btn-sm" href="<?= BASE_URL ?>/?r=auth/auth/employeeLogout">Logout</a>
-    </div>
-  </div>
-</nav>
 
-<?php 
-    // Pull the flash data reliably from either local view assignment or direct session flash variables
-    $activeFlash = $flash ?? ($_SESSION['flash'] ?? null); 
-    if ($activeFlash): 
-        // Clear it immediately so it doesn't repeat on next page click
-        if (isset($_SESSION['flash'])) { unset($_SESSION['flash']); }
-  ?>
-    <div class="position-fixed top-1 end-0 p-1" style="z-index: 1100;">
-      <div id="flashToast" class="toast align-items-center text-white bg-<?= $activeFlash['type'] === 'danger' ? 'danger' : ($activeFlash['type'] === 'success' ? 'success' : 'dark') ?> border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="4000">
-        <div class="d-flex">
-          <div class="toast-body d-flex align-items-center gap-2">
-            <?php if ($activeFlash['type'] === 'success'): ?>
-              <i class="bi bi-check-circle-fill fs-5"></i>
-            <?php else: ?>
-              <i class="bi bi-exclamation-triangle-fill fs-5"></i>
-            <?php endif; ?>
-            <div><?= htmlspecialchars($activeFlash['message']) ?></div>
-          </div>
-          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
+  <div class="layout-container">
+    <header class="top-header">
+      <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-link d-lg-none p-0 text-dark fs-4 me-2" id="sidebarToggle" aria-label="Menu Toggle">
+          <i class="bi bi-list"></i>
+        </button>
+        <a class="header-brand" href="<?= $dashboardHref ?>">
+          <i class="bi bi-cpu-fill"></i> <span>PCX Hub</span>
+        </a>
       </div>
-    </div>
-    
-    <script>
-      // Force execution to wait until the window engine has fully mounted all third-party UI libraries
-      window.addEventListener('load', function() {
-        const toastEl = document.getElementById('flashToast');
-        if (toastEl && typeof bootstrap !== 'undefined') {
-          const bootstrapToast = new bootstrap.Toast(toastEl);
-          bootstrapToast.show();
-        } else {
-          console.warn('Bootstrap runtime script delayed or toast element missing initialization boundaries.');
-        }
-      });
-    </script>
-  <?php endif; ?>
+
+      <div class="dropdown">
+        <button class="btn d-flex align-items-center gap-2 border-0 bg-transparent dropdown-toggle" type="button" id="userMenu" data-bs-toggle="dropdown">
+          <div class="rounded-circle bg-blue-light text-blue d-flex align-items-center justify-content-center fw-bold" style="width: 35px; height: 35px;">
+            <?= strtoupper(substr(htmlspecialchars($employee['name'] ?? 'U'), 0, 1)) ?>
+          </div>
+          <div class="text-start d-none d-sm-block">
+            <div class="fw-semibold small" style="line-height: 1.1;"><?= htmlspecialchars($employee['name'] ?? 'User') ?></div>
+            <div class="text-muted small" style="font-size: 0.72rem;"><?= htmlspecialchars(ucwords($role)) ?></div>
+          </div>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-light">
+          <li><a class="dropdown-item text-danger small" href="<?= BASE_URL ?>/?r=auth/auth/logout"><i class="bi bi-box-arrow-right me-2"></i>Sign Out</a></li>
+        </ul>
+      </div>
+    </header>
+
+    <aside class="sidebar-nav" id="pcxSidebar">
+      <div>
+        <p class="sidebar-section-title">Telemetry</p>
+        <ul class="nav-menu">
+          <?= navLink($dashboardHref, 'bi-speedometer2', 'Dashboard Console', $navActive === 'dashboard') ?>
+        </ul>
+
+        <?php if ($isAdmin): ?>
+          <p class="sidebar-section-title">Directory & People</p>
+          <ul class="nav-menu">
+            <?= navLink(BASE_URL . '/?r=admin/admin/manageUsers', 'bi-person-lines-fill', 'Customers', $navActive === 'users') ?>
+            <?= navLink(BASE_URL . '/?r=admin/admin/manageEmployees', 'bi-people', 'Staff Members', $navActive === 'employees') ?>
+          </ul>
+
+          <p class="sidebar-section-title">Catalog Control</p>
+          <ul class="nav-menu">
+            <?= navLink(BASE_URL . '/?r=admin/admin/manageProducts', 'bi-box-seam', 'Products', $navActive === 'products') ?>
+            <?= navLink(BASE_URL . '/?r=admin/admin/manageCategories', 'bi-tags', 'Categories', $navActive === 'categories') ?>
+            <?= navLink(BASE_URL . '/?r=admin/admin/manageSubcategories', 'bi-diagram-2', 'Subcategories', $navActive === 'subcategories') ?>
+            <?= navLink(BASE_URL . '/?r=admin/admin/managePromotions', 'bi-megaphone', 'Promotions', $navActive === 'promotions') ?>
+          </ul>
+
+          <p class="sidebar-section-title">Operations Oversight</p>
+          <ul class="nav-menu">
+            <?= navLink(BASE_URL . '/?r=sales/sales/orders', 'bi-cart-check', 'Order Directory', $navActive === 'orders') ?>
+            <?= navLink(BASE_URL . '/?r=verification/verification/index', 'bi-shield-check', 'ID Verification Hub', $navActive === 'verification') ?>
+            <?= navLink(BASE_URL . '/?r=payment/payment/index', 'bi-credit-card', 'Settlements Board', $navActive === 'payments') ?>
+            <?= navLink(BASE_URL . '/?r=fulfillment/fulfillment/index', 'bi-truck', 'Dispatch Floor', $navActive === 'fulfillment') ?>
+          </ul>
+
+          <p class="sidebar-section-title">System Parameters</p>
+          <ul class="nav-menu">
+            <?= navLink(BASE_URL . '/?r=admin/admin/manageBranches', 'bi-building', 'Store Branches', $navActive === 'branches') ?>
+            <?= navLink(BASE_URL . '/?r=admin/admin/managePermissions', 'bi-shield-lock', 'Roles & Auth', $navActive === 'permissions') ?>
+          </ul>
+        <?php endif; ?>
+
+        <?php if ($isSales): ?>
+          <p class="sidebar-section-title">Sales Logistics</p>
+          <ul class="nav-menu">
+            <?= navLink(BASE_URL . '/?r=sales/sales/orders', 'bi-cart-check', 'Order Pipeline', $navActive === 'orders') ?>
+            <?= navLink(BASE_URL . '/?r=verification/verification/index', 'bi-shield-check', 'ID Verification', $navActive === 'verification') ?>
+            <?= navLink(BASE_URL . '/?r=payment/payment/index', 'bi-credit-card', 'Settlements', $navActive === 'payments') ?>
+            <?= navLink(BASE_URL . '/?r=fulfillment/fulfillment/index', 'bi-truck', 'Fulfillment', $navActive === 'fulfillment') ?>
+            <?= navLink(BASE_URL . '/?r=inventory/inventory/list', 'bi-inboxes', 'Branch Stock', $navActive === 'inventory') ?>
+          </ul>
+        <?php endif; ?>
+
+        <?php if ($isTech): ?>
+          <p class="sidebar-section-title">Service Center</p>
+          <ul class="nav-menu">
+            <?= navLink(BASE_URL . '/?r=technician/technician/tickets', 'bi-wrench', 'Assigned Tickets', $navActive === 'service') ?>
+          </ul>
+        <?php endif; ?>
+      </div>
+    </aside>
+
+    <div class="modal-backdrop fade d-none" id="sidebarOverlay"></div>
+
+    <main class="main-content" style="min-width: 0; width: 80%; overflow-x: hidden;">
+      <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <div>
+          <h1 class="h3 fw-bold mb-1 text-dark"><?= htmlspecialchars($pageHeading ?? 'Operations Hub') ?></h1>
+          <?php if (!empty($pageSubtitle)): ?>
+            <p class="text-secondary small mb-0"><?= htmlspecialchars($pageSubtitle) ?></p>
+          <?php endif; ?>
+        </div>
+        <?php if (!empty($pageActions)): ?>
+          <div class="d-flex gap-2 align-items-center"><?= $pageActions ?></div>
+        <?php endif; ?>
+      </div>
+
+      <?php
+      $activeFlash = $flash ?? ($_SESSION['flash'] ?? null);
+      if ($activeFlash):
+        unset($_SESSION['flash']);
+        $isDanger = ($activeFlash['type'] ?? '') === 'danger' || ($activeFlash['type'] ?? '') === 'error';
+      ?>
+        <div class="pcx-toast-wrap" id="toastWrap">
+          <div class="alert <?= $isDanger ? 'alert-danger' : 'alert-success' ?> border-0 shadow-sm d-flex align-items-center justify-content-between p-3 mb-4 rounded-3" role="alert">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi <?= $isDanger ? 'bi-exclamation-octagon text-red' : 'bi-check-circle text-success' ?> fs-5"></i>
+              <span class="small fw-medium"><?= htmlspecialchars($activeFlash['message'] ?? '') ?></span>
+            </div>
+            <button type="button" class="btn-close" onclick="document.getElementById('toastWrap').remove()"></button>
+          </div>
+        </div>
+        <script>
+          setTimeout(() => {
+            const w = document.getElementById('toastWrap');
+            if (w) {
+              w.style.opacity = '0';
+              w.style.transition = 'opacity 0.35s ease';
+            }
+          }, 3500);
+          setTimeout(() => {
+            const w = document.getElementById('toastWrap');
+            if (w) w.remove();
+          }, 3900);
+        </script>
+      <?php endif; ?>
