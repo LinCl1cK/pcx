@@ -1,0 +1,15 @@
+{
+    "name": "lorenz/pcx",
+    "autoload": {
+        "psr-4": {
+            "Lorenz\\Pcx\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Linmarr Lorenz Abadilla Autentico",
+            "email": "linmarrlorenz@gmail.com"
+        }
+    ],
+    "require": {}
+}
