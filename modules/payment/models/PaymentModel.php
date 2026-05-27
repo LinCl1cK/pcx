@@ -194,19 +194,22 @@ class PaymentModel extends BaseModel
 
                     $deductStmt = $this->db->prepare(
                         "UPDATE Inventory
-                         SET Inv_StockQty = Inv_StockQty - :qty, Inv_LastUpdated = NOW()
-                         WHERE Inv_ProdId = :pid AND Inv_BranchId = :bid AND Inv_StockQty >= :qty"
+                        SET Inv_StockQty = Inv_StockQty - :qty, Inv_LastUpdated = NOW()
+                        WHERE Inv_ProdId = :pid AND Inv_BranchId = :bid AND Inv_StockQty >= :qty_check"
                     );
+
                     foreach ($items as $item) {
                         $deductStmt->execute([
-                            ':qty' => (int) $item['Item_Quantity'],
-                            ':pid' => $item['Item_ProdId'],
-                            ':bid' => $branchId,
+                            ':qty'       => (int) $item['Item_Quantity'],
+                            ':qty_check' => (int) $item['Item_Quantity'], // Bind it a second time here
+                            ':pid'       => $item['Item_ProdId'],
+                            ':bid'       => $branchId,
                         ]);
+
                         if ($deductStmt->rowCount() !== 1) {
                             throw new RuntimeException(
                                 'Inventory deduction failed for product ' . $item['Item_ProdId']
-                                . '. Stock may be insufficient.'
+                                    . '. Stock may be insufficient.'
                             );
                         }
                     }

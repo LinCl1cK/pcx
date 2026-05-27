@@ -26,28 +26,25 @@ class ServiceModel extends BaseModel
         )->fetchAll();
     }
 
-    public function getFirstTechnicianId(): ?string
+    /**
+     * FIXED: Changed to prepared statement and added explicit branch filtering.
+     */
+    public function getFirstTechnicianId(string $branchId): ?string
     {
-        $row = $this->db->query(
-            "SELECT Emp_Id FROM Employee WHERE Emp_Position = 'Technician' ORDER BY Emp_Id LIMIT 1"
-        )->fetch();
+        $stmt = $this->db->prepare(
+            "SELECT Emp_Id FROM Employee 
+             WHERE Emp_Position = 'Technician' AND Emp_BranchId = :bid 
+             ORDER BY Emp_Id LIMIT 1"
+        );
+        $stmt->execute([':bid' => $branchId]);
+        $row = $stmt->fetch();
         return $row ? trim((string) $row['Emp_Id']) : null;
     }
 
     /**
      * MIGRATION: sp_CreateServiceTicket
-     *
-     * The legacy stored procedure wrapped ticket instantiation in a transaction,
-     * validated the completed-order guard, and associated an active technician ID.
-     *
-     * This method now enforces all three rules inside an explicit PHP transaction
-     * so partial failures are rolled back cleanly — a requirement for MongoDB
-     * portability where stored procedures do not exist.
-     *
-     * Rules enforced:
-     *  1. Ticket can only be created for a 'Completed' order.
-     *  2. A technician must be explicitly provided or auto-assigned.
-     *  3. The entire INSERT is atomic; any failure is rolled back.
+     * * FIXED: Enhanced to pull Order_BranchId and guarantee that the assigned technician
+     * physically belongs to the branch where the order occurred.
      */
     public function createTicket(
         string $orderId,
@@ -57,24 +54,26 @@ class ServiceModel extends BaseModel
     ): void {
         $this->db->beginTransaction();
         try {
-            // Guard: order must exist and be 'Completed'
+            // Guard: order must exist and be 'Completed' (and fetch its branch)
             $cusStmt = $this->db->prepare(
-                "SELECT Order_CusId FROM Orders WHERE Order_Id = :id AND Order_Status = 'Completed' LIMIT 1 FOR UPDATE"
+                "SELECT Order_CusId, Order_BranchId FROM Orders WHERE Order_Id = :id AND Order_Status = 'Completed' LIMIT 1 FOR UPDATE"
             );
             $cusStmt->execute([':id' => $orderId]);
-            $cusId = $cusStmt->fetchColumn();
-            if (!$cusId) {
+            $order = $cusStmt->fetch();
+            if (!$order) {
                 throw new RuntimeException('Service tickets can only be created for completed orders.');
             }
+            $cusId = $order['Order_CusId'];
+            $orderBranchId = $order['Order_BranchId'];
 
-            // Guard: technician must exist
+            // Guard: technician must exist AND belong to the order's branch location
             $techCheck = $this->db->prepare(
-                "SELECT 1 FROM Employee WHERE Emp_Id = :eid AND Emp_Position = 'Technician' LIMIT 1"
+                "SELECT 1 FROM Employee WHERE Emp_Id = :eid AND Emp_Position = 'Technician' AND Emp_BranchId = :bid LIMIT 1"
             );
-            $techCheck->execute([':eid' => $empId]);
+            $techCheck->execute([':eid' => $empId, ':bid' => $orderBranchId]);
             if (!$techCheck->fetchColumn()) {
                 throw new RuntimeException(
-                    'The assigned employee is not a registered Technician. Please select a valid technician.'
+                    'The assigned employee is not a registered Technician at this branch location.'
                 );
             }
 
@@ -103,8 +102,8 @@ class ServiceModel extends BaseModel
 
     /**
      * Customer-facing ticket creation.
-     * Delegates to createTicket() after validating ownership and auto-assigning
-     * the first available technician.
+     * FIXED: Extract the Order_BranchId from the order query and pass it down 
+     * to resolve a matching local technician.
      */
     public function createCustomerTicket(
         string $orderId,
@@ -112,12 +111,13 @@ class ServiceModel extends BaseModel
         string $problemInfo,
         ?string $attachment = null
     ): void {
-        // Validate ownership and completed status
+        // Validate ownership, completed status, and pull branch context
         $row = $this->db->prepare(
-            "SELECT Order_CusId FROM Orders WHERE Order_Id = :oid AND Order_CusId = :cid AND Order_Status = 'Completed' LIMIT 1"
+            "SELECT Order_CusId, Order_BranchId FROM Orders WHERE Order_Id = :oid AND Order_CusId = :cid AND Order_Status = 'Completed' LIMIT 1"
         );
         $row->execute([':oid' => $orderId, ':cid' => $customerId]);
-        if (!$row->fetchColumn()) {
+        $orderData = $row->fetch();
+        if (!$orderData) {
             throw new RuntimeException('Invalid completed order for this account.');
         }
 
@@ -128,9 +128,11 @@ class ServiceModel extends BaseModel
             throw new RuntimeException('A service ticket already exists for this order.');
         }
 
-        $techId = $this->getFirstTechnicianId();
+        // Isolate branch assignment context safely
+        $branchId = (string) $orderData['Order_BranchId'];
+        $techId = $this->getFirstTechnicianId($branchId);
         if (!$techId) {
-            throw new RuntimeException('No technician is available to assign yet. Please contact support.');
+            throw new RuntimeException('No technician is available to assign at this branch location yet. Please contact support.');
         }
 
         // Delegate to the transactional createTicket()
