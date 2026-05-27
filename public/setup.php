@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Database Setup Script - Full CSV Integration
  */
@@ -13,15 +14,15 @@ echo "<h1>PCX Database Setup: Full Integration</h1>";
 try {
     $dsn = "mysql:host=" . DB_HOST . ";charset=utf8mb4";
     $pdo = new PDO($dsn, DB_USER, DB_PASS, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-    
+
     echo "<h2>Step 1: Reinitializing Database...</h2>";
     $pdo->exec("DROP DATABASE IF EXISTS `pcx_db` ");
     $pdo->exec("CREATE DATABASE `pcx_db` ");
-    
+
     $dsn = "mysql:host=" . DB_HOST . ";dbname=pcx_db;charset=utf8mb4";
     $pdo = new PDO($dsn, DB_USER, DB_PASS, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-    
-    echo "<h2>Step 2: Creating Tables...</h2>";
+
+    echo "<h2>Step 2: Creating Tables and Views...</h2>";
     $sql = file_get_contents(__DIR__ . '/../sql/001_create_tables.sql');
     $pdo->exec($sql);
 
@@ -36,14 +37,31 @@ try {
     $stmt = $pdo->prepare("INSERT INTO branch (Branch_Id, Branch_Name, Branch_Location, Branch_ContactNo) VALUES (?, ?, ?, ?)");
     foreach ($branches as $b) $stmt->execute($b);
 
-    // 2. EMPLOYEES (Covering all roles per schema)
-    echo "<h3>Populating Employees...</h3>";
+    // 2. EMPLOYEES (Updated Admin & Branch Roles Framework)
     $employees = [
-        ['EMP-001', 'Juan', 'Dela Cruz', 'juan.dc@pcx.com.ph', 'Administrator', 'BRAN-001', password_hash('admin123', PASSWORD_DEFAULT), '09171234567', '123 Main St, Cebu City'],
-        ['EMP-002', 'Maria', 'Santos', 'm.santos@pcx.com.ph', 'Sales Representative', 'BRAN-001', password_hash('sales123', PASSWORD_DEFAULT), '0917589579', '456 Oak Ave, Cebu City'],
-        ['EMP-003', 'Rico', 'Blanco', 'r.blanco@pcx.com.ph', 'Technician', 'BRAN-002', password_hash('tech123', PASSWORD_DEFAULT), '09172768142', '789 Pine Rd, Cebu City'],
-        ['EMP-004', 'Elena', 'Adarna', 'e.adarna@pcx.com.ph', 'Manager', 'BRAN-003', password_hash('manager123', PASSWORD_DEFAULT), '09179385672', '321 Elm St, Cebu City'],
-        ['EMP-005', 'Kevin', 'Alas', 'k.alas@pcx.com.ph', 'Sales Representative', 'BRAN-004', password_hash('sales123', PASSWORD_DEFAULT), '09172548571', '654 Maple Dr, Cebu City']
+        // GENERAL ADMINS
+        ['EMP-001', 'Juan', 'Dela Cruz', 'juan.dc@pcx.com.ph', 'General Admin', 'BRAN-001', password_hash('admin123', PASSWORD_DEFAULT), '09171234567', '123 Main St, Cebu City'],
+        ['EMP-002', 'Sarah', 'Connor', 's.connor@pcx.com.ph', 'General Admin', null, password_hash('admin123', PASSWORD_DEFAULT), '09170000000', 'No Branch Office'],
+
+        // BRANCH 1: SM Seaside
+        ['EMP-101', 'Kevin', 'Alas', 'k.alas@pcx.com.ph', 'Branch Admin', 'BRAN-001', password_hash('manager123', PASSWORD_DEFAULT), '09172548571', '654 Maple Dr, Cebu City'],
+        ['EMP-102', 'Maria', 'Santos', 'm.santos@pcx.com.ph', 'Sales Representative', 'BRAN-001', password_hash('sales123', PASSWORD_DEFAULT), '0917589579', '456 Oak Ave, Cebu City'],
+        ['EMP-103', 'Rico', 'Blanco', 'r.blanco@pcx.com.ph', 'Technician', 'BRAN-001', password_hash('tech123', PASSWORD_DEFAULT), '09172768142', '789 Pine Rd, Cebu City'],
+
+        // BRANCH 2: SM City Cebu
+        ['EMP-201', 'Anna', 'Smith', 'a.smith@pcx.com.ph', 'Branch Admin', 'BRAN-002', password_hash('manager123', PASSWORD_DEFAULT), '09171112233', '888 Bay View, Cebu City'],
+        ['EMP-202', 'John', 'Doe', 'j.doe@pcx.com.ph', 'Sales Representative', 'BRAN-002', password_hash('sales123', PASSWORD_DEFAULT), '09174445566', '111 Cyberzone, Cebu City'],
+        ['EMP-203', 'Leo', 'Vince', 'l.vince@pcx.com.ph', 'Technician', 'BRAN-002', password_hash('tech123', PASSWORD_DEFAULT), '09177778899', '222 Tech Rd, Cebu City'],
+
+        // BRANCH 3: Ayala Center
+        ['EMP-301', 'Elena', 'Adarna', 'e.adarna@pcx.com.ph', 'Branch Admin', 'BRAN-003', password_hash('manager123', PASSWORD_DEFAULT), '09179385672', '321 Elm St, Cebu City'],
+        ['EMP-302', 'Jose', 'Hump', 'j.hump@pcx.com.ph', 'Sales Representative', 'BRAN-003', password_hash('sales123', PASSWORD_DEFAULT), '09172548571', '654 Maple Dr, Cebu City'],
+        ['EMP-303', 'Lif', 'Mas', 'l.mas@pcx.com.ph', 'Technician', 'BRAN-003', password_hash('tech123', PASSWORD_DEFAULT), '09172548571', '654 Maple Dr, Cebu City'],
+
+        // BRANCH 4: Robinsons Galleria
+        ['EMP-401', 'Bea', 'Alonzo', 'b.alonzo@pcx.com.ph', 'Branch Admin', 'BRAN-004', password_hash('manager123', PASSWORD_DEFAULT), '09173334455', '555 Mall Rd, Cebu City'],
+        ['EMP-402', 'Tom', 'Cruise', 't.cruise@pcx.com.ph', 'Sales Representative', 'BRAN-004', password_hash('sales123', PASSWORD_DEFAULT), '09176667788', '444 Retail Ave, Cebu City'],
+        ['EMP-403', 'Ned', 'Stark', 'n.stark@pcx.com.ph', 'Technician', 'BRAN-004', password_hash('tech123', PASSWORD_DEFAULT), '09179990011', '333 North St, Cebu City']
     ];
     $stmt = $pdo->prepare("INSERT INTO employee (Emp_Id, Emp_Fname, Emp_Lname, Emp_Email, Emp_Position, Emp_BranchId, Emp_Password, Emp_ContactNo, Emp_Address) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
     foreach ($employees as $e) $stmt->execute($e);
@@ -85,7 +103,7 @@ try {
     $stmt = $pdo->prepare("INSERT INTO subcategory (Subc_Id, Subc_Name, Subc_Description) VALUES (?, ?, ?)");
     foreach ($subc as $s) $stmt->execute($s);
 
-// 5. POPULATE ALL PRODUCTS (MUST BE DEFINED BEFORE INVENTORY)
+    // 5. POPULATE ALL PRODUCTS (MUST BE DEFINED BEFORE INVENTORY)
     echo "<h3>Populating All Products...</h3>";
     $products = [
         ['PROD-001', 'ASUS ROG Strix G16', 'ASUS', 89995, 24, 'CAT-001', 'rog_g16.png', 0],
@@ -107,20 +125,32 @@ try {
     $stmt = $pdo->prepare("INSERT INTO product (Prod_Id, Prod_Name, Prod_Brand, Prod_Price, Prod_Warranty, Prod_CatId, Prod_Image, Prod_Featured) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
     foreach ($products as $p) $stmt->execute($p);
 
-    // 6. ENHANCED PRODUCT-SUBCATEGORY MAPPING (Keep this, delete your old Step 6)
+    // 6. ENHANCED PRODUCT-SUBCATEGORY MAPPING
     echo "<h3>Mapping Products to Appropriate Subcategories...</h3>";
     $links = [
-        ['PROD-001', 'SUBC-001'], ['PROD-001', 'SUBC-002'], ['PROD-001', 'SUBC-004'],
-        ['PROD-002', 'SUBC-005'], ['PROD-008', 'SUBC-001'], ['PROD-014', 'SUBC-005'],
-        ['PROD-003', 'SUBC-003'], ['PROD-006', 'SUBC-006'], ['PROD-004', 'SUBC-004'],
-        ['PROD-010', 'SUBC-004'], ['PROD-005', 'SUBC-007'], ['PROD-011', 'SUBC-007'],
-        ['PROD-015', 'SUBC-011'], ['PROD-015', 'SUBC-015'], ['PROD-012', 'SUBC-010'],
-        ['PROD-013', 'SUBC-012'], ['PROD-009', 'SUBC-014'], ['PROD-007', 'SUBC-008']
+        ['PROD-001', 'SUBC-001'],
+        ['PROD-001', 'SUBC-002'],
+        ['PROD-001', 'SUBC-004'],
+        ['PROD-002', 'SUBC-005'],
+        ['PROD-008', 'SUBC-001'],
+        ['PROD-014', 'SUBC-005'],
+        ['PROD-003', 'SUBC-003'],
+        ['PROD-006', 'SUBC-006'],
+        ['PROD-004', 'SUBC-004'],
+        ['PROD-010', 'SUBC-004'],
+        ['PROD-005', 'SUBC-007'],
+        ['PROD-011', 'SUBC-007'],
+        ['PROD-015', 'SUBC-011'],
+        ['PROD-015', 'SUBC-015'],
+        ['PROD-012', 'SUBC-010'],
+        ['PROD-013', 'SUBC-012'],
+        ['PROD-009', 'SUBC-014'],
+        ['PROD-007', 'SUBC-008']
     ];
     $stmt = $pdo->prepare("INSERT INTO product_subcategory (Prod_Id, Subc_Id) VALUES (?, ?)");
     foreach ($links as $l) $stmt->execute($l);
 
-    // 7. PROMOTIONS (Promo.csv)
+    // 7. PROMOTIONS
     echo "<h3>Populating Promotions...</h3>";
     $promos = [
         [1, 'Kingston Banner', 'High-performance memory and storage solutions.', 'Kingston-Banner-1800x600.webp', 'Active', '2026-05-01', '2026-06-30'],
@@ -132,15 +162,13 @@ try {
     $stmt = $pdo->prepare("INSERT INTO promotion (Promo_Id, Promo_Title, Promo_Description, Promo_Banner, Promo_Status, Promo_Start, Promo_End) VALUES (?, ?, ?, ?, ?, ?, ?)");
     foreach ($promos as $pr) $stmt->execute($pr);
 
-    // 8. INVENTORY (Distributed with partial stocks)
+    // 8. INVENTORY
     echo "<h3>Distributing Inventory to Branches...</h3>";
-    // Distributing all products with logical branch variations
     $inventory = [];
     $invCount = 1;
     $branchIds = ['BRAN-001', 'BRAN-002', 'BRAN-003', 'BRAN-004'];
-    
+
     foreach ($products as $idx => $p) {
-        // Distribute to 2-3 branches only to ensure incomplete stock per branch
         $assignedBranches = array_rand(array_flip($branchIds), rand(2, 3));
         foreach ($assignedBranches as $bId) {
             $idStr = "INV-" . str_pad($invCount++, 3, "0", STR_PAD_LEFT);
@@ -152,7 +180,7 @@ try {
     $stmt = $pdo->prepare("INSERT INTO inventory (Inv_Id, Inv_ProdId, Inv_BranchId, Inv_StockQty, Inv_ReorderLevel) VALUES (?, ?, ?, ?, ?)");
     foreach ($inventory as $inv) $stmt->execute($inv);
 
-    // 9. CUSTOMER (Distributed with partial stocks)
+    // 9. CUSTOMER
     echo "<h3>Populating Customers...</h3>";
     $customer = [
         ['CUS26179', 'Lin', 'Mar', 'lin.mar@gmail.com', password_hash('L1nm@rrr', PASSWORD_DEFAULT), '09638730869', 'Hernan Cortes, Mandaue City']
@@ -161,33 +189,26 @@ try {
     foreach ($customer as $c) $stmt->execute($c);
 
     // 10. TRIGGERS AND STORED PROCEDURES
-    echo "<h2>Step 3: Creating Triggers and Stored Procedures...</h2>";
-    $sqlPath = __DIR__ . '/../sql/002_triggers_procedures.sql';
+    // echo "<h2>Step 3: Creating Triggers and Stored Procedures...</h2>";
+    // $sqlPath = __DIR__ . '/../sql/002_triggers_procedures.sql';
 
-    if (file_exists($sqlPath)) {
-        $sqlContent = file_get_contents($sqlPath);
-        
-        // 1. Strip out client-side DELIMITER lines entirely
-        $sqlContent = preg_replace('/DELIMITER\s+\S+/i', '', $sqlContent);
-        
-        // 2. Break statements apart using the custom '$$' delimiter
-        $statements = explode('$$', $sqlContent);
-        
-        foreach ($statements as $query) {
-            $trimmedQuery = trim($query);
-            if (!empty($trimmedQuery)) {
-                // Execute each individual trigger or procedure definition
-                $pdo->exec($trimmedQuery);
-            }
-        }
-        echo "<p style='color:green;'>Triggers and procedures successfully injected!</p>";
-    } else {
-        die("Setup failed: Triggers file not found at " . htmlspecialchars($sqlPath));
-    }
+    // if (file_exists($sqlPath)) {
+    //     $sqlContent = file_get_contents($sqlPath);
+    //     $sqlContent = preg_replace('/DELIMITER\s+\S+/i', '', $sqlContent);
+    //     $statements = explode('$$', $sqlContent);
+
+    //     foreach ($statements as $query) {
+    //         $trimmedQuery = trim($query);
+    //         if (!empty($trimmedQuery)) {
+    //             $pdo->exec($trimmedQuery);
+    //         }
+    //     }
+    //     echo "<p style='color:green;'>Triggers and procedures successfully injected!</p>";
+    // } else {
+    //     die("Setup failed: Triggers file not found at " . htmlspecialchars($sqlPath));
+    // }
 
     echo "<h2 style='color: green;'>Full Integration Success!</h2>";
-
 } catch (PDOException $e) {
     die("Setup failed: " . $e->getMessage());
-
 }

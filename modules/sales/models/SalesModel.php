@@ -1,8 +1,11 @@
 <?php
+
 declare(strict_types=1);
 
-class SalesModel extends BaseModel {
-    private function getPickupBranchId(array $order): ?string {
+class SalesModel extends BaseModel
+{
+    private function getPickupBranchId(array $order): ?string
+    {
         if (($order['Order_Shipping'] ?? '') !== 'Pickup') {
             return null;
         }
@@ -12,7 +15,8 @@ class SalesModel extends BaseModel {
         return null;
     }
 
-    public function dashboardSummary(string $empId): array {
+    public function dashboardSummary(string $empId): array
+    {
         $pending = (int) $this->db->query("SELECT COUNT(*) FROM Orders WHERE Order_Status = 'Pending'")->fetchColumn();
 
         $verifiedStmt = $this->db->prepare("SELECT COUNT(*) FROM Orders WHERE Order_VerifiedBy = :emp");
@@ -29,21 +33,39 @@ class SalesModel extends BaseModel {
         ];
     }
 
-    public function getPendingOrders(int $limit = 8): array {
-        $stmt = $this->db->prepare(
-            "SELECT o.*, c.Cus_Fname, c.Cus_Lname, c.Cus_Email, c.Cus_IdAttachment
-             FROM Orders o
-             INNER JOIN Customer c ON c.Cus_Id = o.Order_CusId
-             WHERE o.Order_Status = 'Pending'
-             ORDER BY o.Order_Date ASC
-             LIMIT :limit"
-        );
+    public function getPendingOrders(?string $branchId = null, int $limit = 8): array
+    {
+        if ($branchId !== null) {
+            // Branch local staff view: Local branch orders + unassigned open-pool deliveries
+            $sql = "SELECT o.*, c.Cus_Fname, c.Cus_Lname, c.Cus_Email, c.Cus_IdAttachment
+                    FROM Orders o
+                    INNER JOIN Customer c ON c.Cus_Id = o.Order_CusId
+                    WHERE o.Order_Status = 'Pending'
+                      AND (o.Order_BranchId = :branchId OR (o.Order_Shipping = 'Delivery' AND o.Order_BranchId IS NULL))
+                    ORDER BY o.Order_Date ASC
+                    LIMIT :limit";
+            $stmt = $this->db->prepare($sql);
+            $stmt->bindValue(':branchId', $branchId, PDO::PARAM_STR);
+            $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+            $stmt->execute();
+            return $stmt->fetchAll();
+        }
+
+        // Global view for General Admins
+        $sql = "SELECT o.*, c.Cus_Fname, c.Cus_Lname, c.Cus_Email, c.Cus_IdAttachment
+                FROM Orders o
+                INNER JOIN Customer c ON c.Cus_Id = o.Order_CusId
+                WHERE o.Order_Status = 'Pending'
+                ORDER BY o.Order_Date ASC
+                LIMIT :limit";
+        $stmt = $this->db->prepare($sql);
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll();
     }
 
-    public function getOrdersForSalesRep(string $empId): array {
+    public function getOrdersForSalesRep(string $empId): array
+    {
         $stmt = $this->db->prepare(
             "SELECT o.*, c.Cus_Fname, c.Cus_Lname, c.Cus_Email, c.Cus_IdAttachment, e.Emp_Fname, e.Emp_Lname
              FROM Orders o
@@ -56,7 +78,8 @@ class SalesModel extends BaseModel {
         return $stmt->fetchAll();
     }
 
-    public function getPayments(): array {
+    public function getPayments(): array
+    {
         $sql = "SELECT p.Pay_Id, p.Pay_OrderID, p.Pay_CusId, p.Pay_Method, p.Pay_Amount, p.Pay_Status,
                        p.Pay_GatewayRef, p.Pay_PaidAt, o.Order_InvoiceNo, o.Order_Status
                 FROM Payment p
@@ -65,7 +88,8 @@ class SalesModel extends BaseModel {
         return $this->db->query($sql)->fetchAll();
     }
 
-    public function getPaidOrders(): array {
+    public function getPaidOrders(): array
+    {
         $sql = "SELECT o.*, c.Cus_Fname, c.Cus_Lname, p.Pay_Id, p.Pay_Method, p.Pay_Status
                 FROM Orders o
                 INNER JOIN Customer c ON c.Cus_Id = o.Order_CusId
@@ -76,7 +100,8 @@ class SalesModel extends BaseModel {
         return $this->db->query($sql)->fetchAll();
     }
 
-    public function getInventory(): array {
+    public function getInventory(): array
+    {
         $sql = "SELECT i.*, p.Prod_Name, p.Prod_Brand, b.Branch_Name
                 FROM Inventory i
                 INNER JOIN Product p ON p.Prod_Id = i.Inv_ProdId
@@ -85,7 +110,8 @@ class SalesModel extends BaseModel {
         return $this->db->query($sql)->fetchAll();
     }
 
-    public function confirmPendingOrder(string $orderId, string $employeeId, bool $idChecked): void {
+    public function confirmPendingOrder(string $orderId, string $employeeId, bool $idChecked): void
+    {
         $this->db->beginTransaction();
         try {
             $orderStmt = $this->db->prepare("SELECT * FROM Orders WHERE Order_Id = :id AND Order_Status = 'Pending' LIMIT 1 FOR UPDATE");
@@ -114,10 +140,17 @@ class SalesModel extends BaseModel {
 
             $branchStmt = $this->db->prepare("SELECT Emp_BranchId FROM Employee WHERE Emp_Id = :id LIMIT 1");
             $branchStmt->execute([':id' => $employeeId]);
-            $branchId = (string) ($branchStmt->fetchColumn() ?: '');
+            $branchId = trim((string) ($branchStmt->fetchColumn() ?: ''));
+
             if ($branchId === '') {
-                throw new RuntimeException('Sales representative branch not found.');
+                // If a General Admin has no branch assigned, fall back to the order's existing branch
+                if (($order['Order_BranchId'] ?? null) !== null) {
+                    $branchId = trim((string)$order['Order_BranchId']);
+                } else {
+                    throw new RuntimeException('Global Administrators cannot verify unassigned Open Pool deliveries. Assign to a branch first.');
+                }
             }
+            
             $pickupBranchId = $this->getPickupBranchId($order);
             if ($pickupBranchId !== null && $pickupBranchId !== $branchId) {
                 throw new RuntimeException('Pickup orders must be verified by a sales representative from the selected branch.');
@@ -131,7 +164,8 @@ class SalesModel extends BaseModel {
                  FOR UPDATE"
             );
             $invStmt->execute([':branch' => $branchId, ':orderId' => $orderId]);
-            foreach ($invStmt->fetchAll() as $row) {
+            $invRows = $invStmt->fetchAll();
+            foreach ($invRows as $row) {
                 if (empty($row['Inv_Id'])) {
                     throw new RuntimeException('No branch inventory row for product ' . $row['Item_ProdId']);
                 }
@@ -140,8 +174,32 @@ class SalesModel extends BaseModel {
                 }
             }
 
-            $stmt = $this->db->prepare("UPDATE Orders SET Order_Status = 'Confirmed', Order_VerifiedBy = :emp WHERE Order_Id = :id AND Order_Status = 'Pending'");
-            $stmt->execute([':emp' => $employeeId, ':id' => $orderId]);
+            // B-6 fix: Deduct inventory at confirm time for COD orders.
+            // Cashless inventory deduction happens later in PaymentModel::confirmPayment.
+            $deductStmt = $this->db->prepare(
+                "UPDATE Inventory
+                 SET Inv_StockQty = Inv_StockQty - :qty, Inv_LastUpdated = NOW()
+                 WHERE Inv_ProdId = :pid AND Inv_BranchId = :bid AND Inv_StockQty >= :qty"
+            );
+            foreach ($invRows as $row) {
+                $deductStmt->execute([
+                    ':qty' => (int) $row['Item_Quantity'],
+                    ':pid' => $row['Item_ProdId'],
+                    ':bid' => $branchId,
+                ]);
+                if ($deductStmt->rowCount() !== 1) {
+                    throw new RuntimeException('Inventory deduction failed for product ' . $row['Item_ProdId']);
+                }
+            }
+
+            // Atomic claim: update status AND lock Order_BranchId to the verifying branch
+            $stmt = $this->db->prepare(
+                "UPDATE Orders 
+                 SET Order_Status = 'Confirmed', Order_VerifiedBy = :emp, Order_BranchId = :branch 
+                 WHERE Order_Id = :id AND Order_Status = 'Pending'"
+            );
+            $stmt->execute([':emp' => $employeeId, ':branch' => $branchId, ':id' => $orderId]);
+            
             if ($stmt->rowCount() !== 1) {
                 throw new RuntimeException('Order could not be confirmed.');
             }
@@ -154,7 +212,8 @@ class SalesModel extends BaseModel {
         }
     }
 
-    public function cancelSalesOrder(string $orderId, string $employeeId): void {
+    public function cancelSalesOrder(string $orderId, string $employeeId): void
+    {
         $stmt = $this->db->prepare(
             "UPDATE Orders
              SET Order_Status = 'Cancelled'

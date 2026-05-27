@@ -1,23 +1,27 @@
 <?php
+
 declare(strict_types=1);
 
 require_once __DIR__ . '/../models/OrderModel.php';
 require_once __DIR__ . '/../../catalog/models/ProductModel.php';
 require_once __DIR__ . '/../../cart/models/CartModel.php';
 
-class OrderController extends BaseController {
+class OrderController extends BaseController
+{
     private OrderModel $model;
     private ProductModel $productModel;
     private CartModel $cartModel;
 
-    public function __construct(PDO $pdo) {
+    public function __construct(PDO $pdo)
+    {
         parent::__construct($pdo);
         $this->model = new OrderModel($pdo);
         $this->productModel = new ProductModel($pdo);
         $this->cartModel = new CartModel($pdo);
     }
 
-    private function handleIdUpload(string $customerId, bool $required, ?string $existingPath): ?string {
+    private function handleIdUpload(string $customerId, bool $required, ?string $existingPath): ?string
+    {
         $file = $_FILES['id_attachment'] ?? null;
         $hasUpload = is_array($file) && ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
         if (!$hasUpload) {
@@ -60,7 +64,8 @@ class OrderController extends BaseController {
         return 'assets/uploads/ids/' . $filename;
     }
 
-    public function checkout(): void {
+    public function checkout(): void
+    {
         $this->requireCustomer('cart/cart/view');
         $customerId = (string) $_SESSION['user']['id'];
         $items = $this->cartModel->getCartItems($customerId);
@@ -88,7 +93,8 @@ class OrderController extends BaseController {
         ]);
     }
 
-    public function place(): void {
+    public function place(): void
+    {
         $this->requireCustomer('cart/cart/view');
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             $this->redirect(BASE_URL . '/?r=cart/cart/view');
@@ -98,37 +104,52 @@ class OrderController extends BaseController {
         if (!in_array($shipping, ['Delivery', 'Pickup'], true)) {
             $shipping = 'Delivery';
         }
+
         $destinationAddress = trim((string) ($_POST['destination_address'] ?? ''));
         $pickupBranchId = trim((string) ($_POST['pickup_branch_id'] ?? ''));
         $contactNo = trim((string) ($_POST['contact_no'] ?? ''));
+        $customerId = (string) $_SESSION['user']['id']; // Moved up to ensure scope consistency
+
+        $finalBranchId = null; // Default to NULL for Delivery
+
         if ($shipping === 'Pickup') {
-            $customerId = (string) $_SESSION['user']['id'];
             $branch = $this->model->getPickupBranchForCart($customerId, $pickupBranchId);
             if (!$branch) {
                 $this->setFlash('danger', 'Please select a pickup branch with enough stock for every cart item.');
                 $this->redirect(BASE_URL . '/?r=order/order/checkout');
             }
             $destinationAddress = $this->model->formatPickupAddress($branch);
+            $finalBranchId = (string) $branch['Branch_Id'];
         }
+
         if ($destinationAddress === '') {
             $this->setFlash('danger', 'Destination address is required.');
             $this->redirect(BASE_URL . '/?r=order/order/checkout');
         }
+
         if ($contactNo !== '' && strlen($contactNo) > 15) {
             $this->setFlash('danger', 'Contact number must be 15 characters or fewer.');
             $this->redirect(BASE_URL . '/?r=order/order/checkout');
         }
 
         try {
-            $customerId = (string) $_SESSION['user']['id'];
             $total = $this->model->calculateCartTotal($customerId);
             $customer = $this->model->getCustomerForCheckout($customerId);
             $idPath = $this->handleIdUpload($customerId, $total >= 50000, $customer['Cus_IdAttachment'] ?? null);
+
             if ($idPath !== null) {
                 $this->model->updateCustomerIdAttachment($customerId, $idPath);
             }
 
-            $orderId = $this->model->placeOrderFromCart($customerId, $shipping, $destinationAddress, $contactNo !== '' ? $contactNo : null);
+            // Passing $finalBranchId to the model method
+            $orderId = $this->model->placeOrderFromCart(
+                $customerId,
+                $shipping,
+                $destinationAddress,
+                $contactNo !== '' ? $contactNo : null,
+                $finalBranchId
+            );
+
             $this->redirect(BASE_URL . '/?r=order/order/invoice&id=' . urlencode($orderId));
         } catch (Throwable $e) {
             $this->setFlash('danger', $e->getMessage());
@@ -136,7 +157,8 @@ class OrderController extends BaseController {
         }
     }
 
-    public function invoice(): void {
+    public function invoice(): void
+    {
         $this->requireCustomer('auth/auth/account');
         $orderId = trim((string) ($_GET['id'] ?? ''));
         $order = $this->model->getOrderById($orderId);
@@ -153,7 +175,8 @@ class OrderController extends BaseController {
         ]);
     }
 
-    public function track(): void {
+    public function track(): void
+    {
         $this->requireCustomer('auth/auth/account');
         $orders = $this->model->getCustomerOrders((string) $_SESSION['user']['id']);
         View::render(__DIR__ . '/../views/tracking.php', [
@@ -164,18 +187,58 @@ class OrderController extends BaseController {
     }
 
     /** Staff order list (Administrator / Sales Representative). */
-    public function index(): void {
-        $this->requireStaffOrdersPayments();
+    public function index(): void
+    {
+        // Resolve session employee context
         $emp = $_SESSION['employee'];
-        $orders = $this->isAdministrator()
-            ? $this->model->listAllOrders()
-            : $this->model->listOrdersForSalesRep((string) $emp['id']);
+        $rawRole = strtolower((string)($emp['Emp_Position'] ?? $emp['role'] ?? ''));
+        $role = str_replace('_', ' ', $rawRole);
+
+        // 1. Contextual Routing Scope
+        if ($this->isAdministrator() || $role === 'general admin') {
+            $orders = $this->model->listAllOrders();
+        } elseif ($role === 'branch admin') {
+            // Branch Admins see all historical orders bound to their local branch
+            $scopeBranchId = $emp['branch_id'] ?? null;
+            $orders = $this->model->getAllOrders($scopeBranchId);
+        } else {
+            // Fallback for standard Sales Representatives
+            $orders = $this->model->listOrdersForSalesRep((string) $emp['id'], $emp['branch_id'] ?? null);
+        }
+
         View::render(__DIR__ . '/../views/orders_staff_index.php', [
             'orders' => $orders,
             'employee' => $emp,
             'navActive' => 'orders',
             'pageTitle' => 'Orders',
             'pageHeading' => 'Orders',
+        ]);
+    }
+
+    public function manageOrders(): void
+    {
+        // FIX: Use your system's valid array-based role gate
+        $this->requireRoles(['general admin', 'branch admin', 'administrator', 'sales representative']);
+
+        $emp = $_SESSION['employee'];
+
+        // Unify role string adjustments
+        $rawRole = strtolower((string)($emp['Emp_Position'] ?? $emp['role'] ?? ''));
+        $role = str_replace('_', ' ', $rawRole);
+
+        // Strict isolation enforcement: 
+        // If they are a 'general admin', pass null so they can see all branches.
+        // Otherwise, pull their specific branch ID so they only see their local data.
+        $scopeBranchId = ($role === 'general admin') ? null : ($emp['branch_id'] ?? null);
+        $orders = $this->model->getAllOrders($scopeBranchId);
+
+        View::render(dirname(__DIR__, 2) . '/order/views/orders_staff_index.php', [
+            'employee' => $emp,
+            'orders' => $orders,
+            'flash' => $this->pullFlash(),
+            'navActive' => 'orders',
+            'pageTitle' => 'Orders Log',
+            'pageHeading' => 'Orders Log',
         ]);
     }
 }

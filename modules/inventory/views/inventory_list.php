@@ -4,6 +4,8 @@ $branches = $branches ?? [];
 $products = $products ?? [];
 $flash = $flash ?? null;
 $readOnly = !empty($readOnly);
+$isBranchAdmin = !empty($employee['Emp_BranchId']);
+$myBranchId = $employee['Emp_BranchId'] ?? '';
 $employee = $employee ?? ($_SESSION['employee'] ?? []);
 $navActive = $navActive ?? 'inventory';
 $pageTitle = $pageTitle ?? 'Inventory — PCX Admin';
@@ -39,12 +41,17 @@ require dirname(__DIR__, 3) . '/app/views/layouts/employee_begin.php';
             </div>
             <div class="col-12">
               <label class="form-label small fw-semibold text-secondary">Target Branch</label>
-              <select class="form-select" name="Inv_BranchId" required>
-                <option value="">— Select Branch —</option>
-                <?php foreach ($branches as $b): ?>
-                  <option value="<?= htmlspecialchars((string) $b['Branch_Id']) ?>"><?= htmlspecialchars((string) $b['Branch_Name']) ?></option>
-                <?php endforeach; ?>
-              </select>
+              <?php if ($isBranchAdmin): ?>
+                <input type="hidden" name="Inv_BranchId" value="<?= htmlspecialchars($myBranchId) ?>">
+                <input class="form-control bg-light text-muted" value="Current Location (<?= htmlspecialchars($myBranchId) ?>)" disabled>
+              <?php else: ?>
+                <select class="form-select" name="Inv_BranchId" required>
+                  <option value="">— Select Branch —</option>
+                  <?php foreach ($branches as $b): ?>
+                    <option value="<?= htmlspecialchars((string) $b['Branch_Id']) ?>"><?= htmlspecialchars((string) $b['Branch_Name']) ?></option>
+                  <?php endforeach; ?>
+                </select>
+              <?php endif; ?>
             </div>
             <div class="col-6">
               <label class="form-label small fw-semibold text-secondary">Initial Qty</label>
@@ -72,10 +79,15 @@ require dirname(__DIR__, 3) . '/app/views/layouts/employee_begin.php';
               <input class="form-control" name="Inv_ProdId" placeholder="e.g. 1042" required>
             </div>
             <div class="col-12">
-              <label class="form-label small fw-semibold text-secondary">Source Branch</label>
-              <select class="form-select" name="from_branch" required>
-                <?php foreach ($branches as $b): ?><option value="<?= htmlspecialchars((string) $b['Branch_Id']) ?>"><?= htmlspecialchars((string) $b['Branch_Name']) ?></option><?php endforeach; ?>
-              </select>
+              <label class="form-label small fw-semibold text-secondary">Source Branch (Sending From)</label>
+              <?php if ($isBranchAdmin): ?>
+                <input type="hidden" name="from_branch" value="<?= htmlspecialchars($myBranchId) ?>">
+                <input class="form-control bg-light text-muted" value="My Inventory (<?= htmlspecialchars($myBranchId) ?>)" disabled>
+              <?php else: ?>
+                <select class="form-select" name="from_branch" required>
+                  <?php foreach ($branches as $b): ?><option value="<?= htmlspecialchars((string) $b['Branch_Id']) ?>"><?= htmlspecialchars((string) $b['Branch_Name']) ?></option><?php endforeach; ?>
+                </select>
+              <?php endif; ?>
             </div>
             <div class="col-12">
               <label class="form-label small fw-semibold text-secondary">Destination Branch</label>
@@ -112,11 +124,10 @@ require dirname(__DIR__, 3) . '/app/views/layouts/employee_begin.php';
               <input type="text" id="tableSearch" class="form-control bg-light border-start-0" placeholder="Search product name...">
             </div>
           </div>
-          <div class="col-12 Explo col-sm-6 col-md-4">
+          <div class="col-12 col-sm-6 col-md-4 <?= $isBranchAdmin ? 'd-none' : '' ?>">
             <select id="branchFilter" class="form-select form-select-sm bg-light">
               <option value="">All Branches</option>
               <?php
-              // Pull dynamic branches from layout array references
               $uniqueBranches = array_unique(array_column($stocks, 'Branch_Name'));
               foreach ($uniqueBranches as $branchName):
               ?>

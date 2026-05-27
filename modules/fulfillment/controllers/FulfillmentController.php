@@ -1,18 +1,23 @@
 <?php
+
 declare(strict_types=1);
 
 require_once __DIR__ . '/../models/FulfillmentModel.php';
 
-class FulfillmentController extends BaseController {
+class FulfillmentController extends BaseController
+{
     private FulfillmentModel $model;
 
-    public function __construct(PDO $pdo) {
+    public function __construct(PDO $pdo)
+    {
         parent::__construct($pdo);
         $this->model = new FulfillmentModel($pdo);
     }
 
-    public function index(): void {
-        $this->requireEmployee(['Administrator', 'Sales Representative']);
+    public function index(): void
+    {
+        // In FulfillmentController.php (index) and VerificationController.php (index/process)
+        $this->requireEmployee(['Administrator', 'branch admin', 'general admin', 'Sales Representative']);
         View::render(__DIR__ . '/../views/fulfillment_index.php', [
             'orders' => $this->model->getPaidOrders(),
             'employee' => $_SESSION['employee'],
@@ -20,7 +25,8 @@ class FulfillmentController extends BaseController {
         ]);
     }
 
-    public function complete(): void {
+    public function complete(): void
+    {
         $this->requireAdministrator();
         $orderId = trim((string) ($_POST['order_id'] ?? ''));
         try {

@@ -84,7 +84,8 @@ class AuthController extends BaseController {
                 'id'    => $user['Emp_Id'],
                 'name'  => trim($user['Emp_Fname'] . ' ' . $user['Emp_Lname']),
                 'email' => $user['Emp_Email'],
-                'role'  => $user['Emp_Position']
+                'role'  => $user['Emp_Position'],
+                'branch_id' => $user['Emp_BranchId']
             ];
 
             // ADDED: Save a success flash message into the session registry for the header toast component
@@ -237,6 +238,7 @@ class AuthController extends BaseController {
 
     public function logout(): void {
         unset($_SESSION['user']);
+        unset($_SESSION['employee']);
         $this->redirect(BASE_URL . '/?r=catalog/product/home');
     }
 

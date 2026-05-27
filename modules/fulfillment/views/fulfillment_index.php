@@ -1,12 +1,19 @@
 <?php
-$orders = $orders ?? [];
-$employee = $employee ?? [];
-$flash = $flash ?? null;
+$orders   = $orders ?? [];
+$employee = $employee ?? ($_SESSION['employee'] ?? []);
+$flash    = $flash ?? null;
 $navActive = $navActive ?? 'fulfillment';
 $pageTitle = $pageTitle ?? 'Fulfillment — PCX Admin';
 $pageHeading = $pageHeading ?? 'Fulfillment Queue';
 $pageSubtitle = 'Process verified and paid orders to finalize completion protocols.';
-$readOnly = strtolower((string) ($employee['role'] ?? '')) !== 'administrator';
+
+// 1. Normalize role keys and string formatting
+$rawRole  = strtolower(trim($employee['Emp_Position'] ?? $employee['role'] ?? ''));
+$role     = str_replace('_', ' ', $rawRole);
+
+// 2. Align read-only logic with allowed admin tiers
+$readOnly = !in_array($role, ['administrator', 'general admin', 'branch admin']);
+
 require dirname(__DIR__, 3) . '/app/views/layouts/employee_begin.php';
 ?>
 

@@ -1,6 +1,6 @@
 <?php
 $orders = $orders ?? [];
-$employee = $employee ?? [];
+$employee = $employee ?? ($_SESSION['employee'] ?? []);
 $flash = $_SESSION['flash'] ?? null;
 unset($_SESSION['flash']);
 $navActive = $navActive ?? 'verification';

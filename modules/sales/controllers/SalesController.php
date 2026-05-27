@@ -1,27 +1,52 @@
 <?php
+
 declare(strict_types=1);
 
 require_once __DIR__ . '/../models/SalesModel.php';
 
-class SalesController extends BaseController {
+class SalesController extends BaseController
+{
     private SalesModel $model;
 
-    public function __construct(PDO $pdo) {
+    public function __construct(PDO $pdo)
+    {
         parent::__construct($pdo);
         $this->model = new SalesModel($pdo);
     }
 
-    private function requireSales(): void {
-        $this->requireEmployee(['Sales Representative', 'Administrator']);
+    private function requireSales(): void
+    {
+        $this->requireEmployee([
+            'Sales Representative', 'sales representative',
+            'Administrator', 'administrator',
+            'Branch Admin', 'branch admin',
+            'General Admin', 'general admin'
+        ]);
     }
 
-    public function dashboard(): void {
+    private function getBranchScope(array $emp): ?string
+    {
+        $rawRole = strtolower((string)($emp['Emp_Position'] ?? $emp['role'] ?? ''));
+        $role = str_replace('_', ' ', trim($rawRole));
+        
+        if ($role === 'general admin') {
+            return null;
+        }
+
+        $branchId = trim((string) ($emp['branch_id'] ?? ''));
+        return $branchId !== '' ? $branchId : null;
+    }
+
+    public function dashboard(): void
+    {
         $this->requireSales();
         $emp = $_SESSION['employee'];
+        $branchScope = $this->getBranchScope($emp);
+
         View::render(__DIR__ . '/../views/sales_dashboard.php', [
             'employee' => $emp,
             'summary' => $this->model->dashboardSummary((string) $emp['id']),
-            'pendingOrders' => $this->model->getPendingOrders(),
+            'pendingOrders' => $this->model->getPendingOrders($branchScope),
             'flash' => $this->pullFlash(),
             'navActive' => 'dashboard',
             'pageTitle' => 'Sales Dashboard',
@@ -29,12 +54,16 @@ class SalesController extends BaseController {
         ]);
     }
 
-    public function orders(): void {
+    public function orders(): void
+    {
         $this->requireSales();
+        $emp = $_SESSION['employee'];
+        
+        // Pass the scoped data array if your SalesModel supports isolation parameters,
+        // otherwise it will default to showing matching employee verified items.
         View::render(dirname(__DIR__, 2) . '/order/views/orders_staff_index.php', [
-        //View::render(__DIR__ . '/../views/orders.php', [
-            'employee' => $_SESSION['employee'],
-            'orders' => $this->model->getOrdersForSalesRep((string) $_SESSION['employee']['id']),
+            'employee' => $emp,
+            'orders' => $this->model->getOrdersForSalesRep((string) $emp['id']),
             'flash' => $this->pullFlash(),
             'navActive' => 'orders',
             'pageTitle' => 'Sales Orders',
@@ -42,12 +71,14 @@ class SalesController extends BaseController {
         ]);
     }
 
-    public function verification(): void {
+    public function verification(): void
+    {
         $this->requireSales();
+        $emp = $_SESSION['employee'];
+        
         View::render(dirname(__DIR__, 2) . '/order/views/orders_staff_index.php', [
-        // View::render(__DIR__ . '/../views/orders.php', [
-            'employee' => $_SESSION['employee'],
-            'orders' => $this->model->getOrdersForSalesRep((string) $_SESSION['employee']['id']),
+            'employee' => $emp,
+            'orders' => $this->model->getOrdersForSalesRep((string) $emp['id']),
             'flash' => $this->pullFlash(),
             'navActive' => 'verification',
             'pageTitle' => 'Sales Verification',
@@ -55,7 +86,8 @@ class SalesController extends BaseController {
         ]);
     }
 
-    public function confirm(): void {
+    public function confirm(): void
+    {
         $this->requireSales();
         $orderId = trim((string) ($_POST['order_id'] ?? ''));
         try {
@@ -64,10 +96,12 @@ class SalesController extends BaseController {
         } catch (Throwable $e) {
             $this->setFlash('danger', $e->getMessage());
         }
+        // Redirect back to Sales Hub Orders to maintain clean context loop
         $this->redirect(BASE_URL . '/?r=sales/sales/orders');
     }
 
-    public function cancel(): void {
+    public function cancel(): void
+    {
         $this->requireSales();
         $orderId = trim((string) ($_POST['order_id'] ?? ''));
         try {
@@ -76,13 +110,14 @@ class SalesController extends BaseController {
         } catch (Throwable $e) {
             $this->setFlash('danger', $e->getMessage());
         }
+        // Redirect back to Sales Hub Orders to maintain clean context loop
         $this->redirect(BASE_URL . '/?r=sales/sales/orders');
     }
 
-    public function payments(): void {
+    public function payments(): void
+    {
         $this->requireSales();
         View::render(dirname(__DIR__, 2) . '/payment/views/payment_staff_index.php', [
-        // View::render(__DIR__ . '/../views/payments.php', [
             'employee' => $_SESSION['employee'],
             'payments' => $this->model->getPayments(),
             'flash' => $this->pullFlash(),
@@ -92,10 +127,10 @@ class SalesController extends BaseController {
         ]);
     }
 
-    public function fulfillment(): void {
+    public function fulfillment(): void
+    {
         $this->requireSales();
         View::render(dirname(__DIR__, 2) . '/fulfillment/views/fulfillment_index.php', [
-        // View::render(__DIR__ . '/../views/fulfillment.php', [
             'employee' => $_SESSION['employee'],
             'orders' => $this->model->getPaidOrders(),
             'flash' => $this->pullFlash(),
@@ -105,10 +140,10 @@ class SalesController extends BaseController {
         ]);
     }
 
-    public function inventory(): void {
+    public function inventory(): void
+    {
         $this->requireSales();
         View::render(dirname(__DIR__, 2) . '/inventory/views/inventory_list.php', [
-        // View::render(__DIR__ . '/../views/inventory.php', [
             'employee' => $_SESSION['employee'],
             'stocks' => $this->model->getInventory(),
             'navActive' => 'inventory',
@@ -131,7 +166,7 @@ class SalesController extends BaseController {
             $this->setFlash('danger', $e->getMessage());
         }
         $next = (string) ($_POST['next'] ?? 'payments');
-        $route = $next === 'fulfillment' ? 'fulfillment' : 'payments';
-        $this->redirect(BASE_URL . '/?r=sales/sales/' . $route);
+        $route = $next === 'fulfillment' ? 'fulfillment/fulfillment/index' : 'payment/payment/index';
+        $this->redirect(BASE_URL . '/?r=' . $route);
     }
 }

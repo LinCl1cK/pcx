@@ -2,12 +2,15 @@
 $promotions  = $promotions ?? [];
 $flash       = $flash ?? null;
 $employee    = $employee ?? ($_SESSION['employee'] ?? []);
+$isGeneralAdmin = empty($employee['Emp_BranchId']);
 $navActive   = 'promotions';
 $pageTitle   = $pageTitle ?? 'Promotions — PCX Admin';
 $pageHeading = $pageHeading ?? 'Manage Promotions';
 $pageSubtitle = 'Oversee marketing campaigns, banners, and scheduled storefront sales.';
-$pageActions = '<a href="' . BASE_URL . '/?r=admin/admin/createPromotion" class="btn btn-primary"><i class="bi bi-megaphone me-1"></i>New Promotion</a>';
-require dirname(__DIR__, 3) . '/app/views/layouts/employee_begin.php';
+$pageActions = '';
+if ($isGeneralAdmin) {
+    $pageActions = '<a href="' . BASE_URL . '/?r=admin/admin/createPromotion" class="btn btn-primary"><i class="bi bi-megaphone me-1"></i>New Promotion</a>';
+}require dirname(__DIR__, 3) . '/app/views/layouts/employee_begin.php';
 ?>
 
 <div class="card border-0 shadow-sm bg-white">
