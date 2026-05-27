@@ -93,6 +93,68 @@ require_once __DIR__ . '/../../../app/core/header.php';
           <?php endif; ?>
         </div>
       </div>
+
+      <div class="card shadow-sm border-0 mt-3">
+        <div class="card-body p-4">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="h5 mb-0">Service & Warranty Tickets</h2>
+            <a href="<?= BASE_URL ?>/?r=service/customerTicket/request" class="btn btn-outline-primary btn-sm">
+              <i class="bi bi-plus-lg"></i> Open New Ticket
+            </a>
+          </div>
+          
+          <?php if (empty($serviceTickets)): ?>
+            <div class="alert alert-light border mb-0 text-muted">You have no active or past service requests.</div>
+          <?php else: ?>
+            <div class="table-responsive">
+              <table class="table table-striped align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Ticket ID</th>
+                    <th>Date Opened</th>
+                    <th>Linked Invoice</th>
+                    <th>Status</th>
+                    <th>Latest Update</th>
+                    <th class="text-end">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <?php foreach ($serviceTickets as $tix): ?>
+                    <tr>
+                      <td class="fw-medium text-dark">#<?= htmlspecialchars((string) $tix['Tix_Id']) ?></td>
+                      <td class="text-muted small"><?= htmlspecialchars(date('M d, Y', strtotime((string)$tix['Tix_CreatedAt']))) ?></td>
+                      <td>INV-<?= htmlspecialchars((string) ($tix['Order_InvoiceNo'] ?? 'N/A')) ?></td>
+                      <td>
+                        <?php
+                        $status = trim((string)$tix['Tix_Status']);
+                        if ($status === 'Completed') {
+                          echo '<span class="badge bg-light text-success border border-success-subtle px-2 py-1">Completed</span>';
+                        } elseif ($status === 'In Progress') {
+                          echo '<span class="badge bg-blue-light text-primary border border-primary-subtle px-2 py-1">In Progress</span>';
+                        } else {
+                          echo '<span class="badge bg-light text-warning border border-warning-subtle px-2 py-1">Pending</span>';
+                        }
+                        ?>
+                      </td>
+                      <td class="small text-secondary" style="max-width: 200px;">
+                         <div class="text-truncate" title="<?= htmlspecialchars((string) $tix['Tix_ProblemInfo']) ?>">
+                           <?= htmlspecialchars((string) $tix['Tix_ProblemInfo']) ?>
+                         </div>
+                      </td>
+                      <td class="text-end">
+                        <a href="<?= BASE_URL ?>/?r=service/customerTicket/details&id=<?= htmlspecialchars((string) $tix['Tix_Id']) ?>" class="btn btn-sm btn-dark">
+                          View Details
+                        </a>
+                      </td>
+                    </tr>
+                  <?php endforeach; ?>
+                </tbody>
+              </table>
+            </div>
+          <?php endif; ?>
+        </div>
+      </div>
+      
     </div>
   </div>
 </div>

@@ -7,10 +7,12 @@ if (file_exists(__DIR__ . '/../../catalog/models/ProductModel.php')) {
     require_once __DIR__ . '/../../catalog/models/ProductModel.php';
 }
 
+// CHANGED: Removed the invalid global instantiation of ServiceModel here and moved it into the account() method below.
+
 class AuthController extends BaseController {
     private AuthModel $model;
 
-    public function __construct(PDO $pdo) {
+    public function __construct(PDO $pdo) { 
         parent::__construct($pdo);
         $this->model = new AuthModel($pdo);
     }
@@ -186,11 +188,19 @@ class AuthController extends BaseController {
         }
         $customer = $this->model->findCustomerByEmail($_SESSION['user']['email'] ?? '');
         $orders   = $this->model->getCustomerOrders($userId);
-        
+
+        // --- STEP 2: INJECT DATA HERE ---
+        require_once __DIR__ . '/../../service/models/ServiceModel.php'; // Ensure model is loaded
+        $serviceModel = new ServiceModel($this->db); 
+        $customerId = (string) $_SESSION['user']['id'];
+        $serviceTickets = $serviceModel->listTicketsForCustomer($customerId);
+        // --------------------------------
+
         $this->view('auth/views/account.php', [
             'user'     => $_SESSION['user'] ?? [],
             'customer' => $customer ?? [],
-            'orders'   => $orders
+            'orders'   => $orders,
+            'serviceTickets' => $serviceTickets
         ]);
     }
 

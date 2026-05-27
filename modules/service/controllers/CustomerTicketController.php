@@ -97,4 +97,27 @@ class CustomerTicketController extends BaseController
         $stmt->execute([':cid' => $customerId]);
         return $stmt->fetchAll();
     }
+
+    // Changed from view() to details()
+    public function details(): void
+    {
+        $this->requireCustomer('service/customerTicket/details');
+        $cid = (string) $_SESSION['user']['id'];
+        $ticketId = trim((string) ($_GET['id'] ?? ''));
+
+        if ($ticketId === '') {
+            $this->redirect(BASE_URL . '/?r=auth/auth/account');
+        }
+
+        $ticket = $this->model->getCustomerTicket($ticketId, $cid);
+
+        // Security check
+        if (!$ticket) {
+            $this->redirect(BASE_URL . '/?r=auth/auth/account');
+        }
+
+        $pageTitle = 'Ticket #' . htmlspecialchars($ticketId) . ' - PCX Service';
+
+        require __DIR__ . '/../views/customer_ticket_view.php';
+    }
 }

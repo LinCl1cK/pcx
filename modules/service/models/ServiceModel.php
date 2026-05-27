@@ -202,4 +202,36 @@ class ServiceModel extends BaseModel
                     t.Tix_CreatedAt ASC";
         return $this->db->query($sql)->fetchAll();
     }
+
+    public function listTicketsForCustomer(string $customerId): array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT t.*, o.Order_InvoiceNo
+             FROM Service_Ticket t
+             LEFT JOIN Orders o ON o.Order_Id = t.Tix_OrderID
+             WHERE t.Tix_CusId = :cid
+             ORDER BY t.Tix_CreatedAt DESC"
+        );
+        $stmt->execute([':cid' => $customerId]);
+        return $stmt->fetchAll();
+    }
+
+    public function getCustomerTicket(string $ticketId, string $customerId): ?array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT t.*, o.Order_InvoiceNo, o.Order_Date, e.Emp_Fname, e.Emp_Lname
+             FROM Service_Ticket t
+             LEFT JOIN Orders o ON o.Order_Id = t.Tix_OrderID
+             LEFT JOIN Employee e ON e.Emp_Id = t.Tix_EmpId
+             WHERE t.Tix_Id = :tid AND t.Tix_CusId = :cid
+             LIMIT 1"
+        );
+        $stmt->execute([
+            ':tid' => $ticketId, 
+            ':cid' => $customerId
+        ]);
+        
+        $ticket = $stmt->fetch();
+        return $ticket ?: null;
+    }
 }
