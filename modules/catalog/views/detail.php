@@ -8,7 +8,7 @@ $flash = $flash ?? null;
 ?>
 <?php
 // Fix for app/core/header.php
-$basePath = dirname(__DIR__, 2); // This gets C:\xampp\htdocs\pcx
+$basePath = dirname(__DIR__, 3); // This gets C:\xampp\htdocs\pcx
 require_once $basePath . '/app/views/layouts/customer_header.php';
 ?>
 

@@ -161,16 +161,27 @@ function navLink(string $href, string $icon, string $label, bool $active): strin
         <?= navLink($dashboardHref, 'bi-grid-1x2-fill', 'Dashboard', $navActive === 'dashboard') ?>
       </ul>
 
-      <?php if ($isAdmin): ?>
-        <div class="sidebar-heading">Management Portal</div>
+      <?php if ($isGeneralAdmin): ?>
         <ul class="nav flex-column mb-2">
-          <?= navLink(BASE_URL . '/?r=admin/admin/manageEmployees', 'bi-people-fill', 'Staff Accounts', $navActive === 'users') ?>
-          <?= navLink(BASE_URL . '/?r=admin/admin/manageProducts', 'bi-box-seam-fill', 'Product Catalog', $navActive === 'products') ?>
-          <?= navLink(BASE_URL . '/?r=admin/admin/manageCategories', 'bi-tags-fill', 'Categories', $navActive === 'categories') ?>
+          <li class="nav-item mt-4 mb-2">
+            <span class="sidebar-heading mt-3">Platform Config</span>
+          </li>
+          
+          <?= navLink(BASE_URL . '/?r=admin/admin/manageBranches', 'bi-shop', 'Branches', $navActive === 'branches') ?>
+          <?= navLink(BASE_URL . '/?r=admin/admin/managePermissions', 'bi-shield-lock', 'Roles & Permissions', $navActive === 'permissions') ?>
+          <?= navLink(BASE_URL . '/?r=admin/admin/manageUsers', 'bi-people', 'User Accounts', $navActive === 'users') ?>
+
+          <li class="nav-item mt-4 mb-2">
+            <span class="sidebar-heading mt-3">Storefront Content</span>
+          </li>
+          
+          <?= navLink(BASE_URL . '/?r=catalog/product/index', 'bi-box-seam', 'Products', $navActive === 'products') ?>
+          <?= navLink(BASE_URL . '/?r=catalog/category/index', 'bi-tags', 'Categories', $navActive === 'categories') ?>
+          <?= navLink(BASE_URL . '/?r=admin/admin/managePromotions', 'bi-megaphone', 'Promotions', $navActive === 'promotions') ?>
         </ul>
       <?php endif; ?>
 
-      <div class="sidebar-heading">Core Workflows</div>
+      <div class="sidebar-heading mt-3">Core Workflows</div>
       <ul class="nav flex-column mb-2">
         <?= navLink(BASE_URL . '/?r=order/order/manageOrders', 'bi-receipt', 'Orders Console', $navActive === 'orders') ?>
         <?= navLink(BASE_URL . '/?r=inventory/inventory/index', 'bi-boxes', 'Inventory Control', $navActive === 'inventory') ?>
