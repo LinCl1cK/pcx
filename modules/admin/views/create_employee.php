@@ -6,11 +6,16 @@ $navActive   = 'employees';
 $pageTitle   = $pageTitle   ?? 'Create Employee — PCX Admin';
 $pageHeading = $pageHeading ?? 'Create Employee';
 $pageSubtitle = 'Register a new staff member and assign their portal access.';
+
 if (!isset($allowedRoles)) {
-    $currentRole = strtolower(trim($employee['Emp_Position'] ?? $employee['role'] ?? ''));
-    $allowedRoles = ($currentRole === 'general admin') 
-        ? ['Branch Admin', 'General Admin'] 
-        : ['Sales Representative', 'Technician'];
+  $currentRole = strtolower(trim($employee['Emp_Position'] ?? $employee['role'] ?? ''));
+
+  // Adjusted role permissions: 
+  // General Admin creates: Branch Admin, General Admin
+  // Branch Admin creates: Sales Rep, Technician, Branch Admin
+  $allowedRoles = ($currentRole === 'general admin' || $currentRole === 'general administrator')
+    ? ['Branch Admin', 'General Admin']
+    : ['Sales Representative', 'Technician', 'Branch Admin'];
 }
 require dirname(__DIR__, 3) . '/app/views/layouts/employee_begin.php';
 ?>

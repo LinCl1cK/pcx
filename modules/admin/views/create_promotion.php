@@ -9,10 +9,9 @@ require dirname(__DIR__, 3) . '/app/views/layouts/employee_begin.php';
 ?>
 
 <div style="max-width:700px;">
-  <form method="post" action="<?= BASE_URL ?>/?r=admin/admin/createPromotion">
+  <form method="post" action="<?= BASE_URL ?>/?r=admin/admin/createPromotion" enctype="multipart/form-data">
     <div style="display:flex;flex-direction:column;gap:1.1rem;">
 
-      <!-- ── Promotion Details ── -->
       <div class="card">
         <div class="card-header">
           <span class="card-title"><i class="bi bi-megaphone" style="color:var(--blue);margin-right:.4rem;"></i>Promotion Details</span>
@@ -35,10 +34,9 @@ require dirname(__DIR__, 3) . '/app/views/layouts/employee_begin.php';
           </div>
 
           <div>
-            <label class="form-label" for="banner">Banner Image Filename <span style="color:var(--red)">*</span></label>
-            <input type="text" class="form-control" id="banner" name="banner"
-              placeholder="e.g. midyear-sale-2025.webp" required>
-            <p class="form-hint">Enter only the filename. The file must already be uploaded to <code>/assets/banners/</code>.</p>
+            <label class="form-label" for="banner">Banner Image <span style="color:var(--red)">*</span></label>
+            <input type="file" class="form-control" id="banner" name="banner" accept="image/*" required>
+            <p class="form-hint">Upload your promotional banner. It will be securely stored in <code>/assets/images/promos/</code>.</p>
           </div>
 
           <div>
@@ -52,7 +50,6 @@ require dirname(__DIR__, 3) . '/app/views/layouts/employee_begin.php';
         </div>
       </div>
 
-      <!-- ── Schedule ── -->
       <div class="card">
         <div class="card-header">
           <span class="card-title"><i class="bi bi-calendar-event" style="color:var(--blue);margin-right:.4rem;"></i>Schedule</span>
@@ -74,7 +71,6 @@ require dirname(__DIR__, 3) . '/app/views/layouts/employee_begin.php';
         </div>
       </div>
 
-      <!-- ── Actions ── -->
       <div style="display:flex;gap:.6rem;justify-content:flex-end;">
         <a href="<?= BASE_URL ?>/?r=admin/admin/managePromotions" class="btn btn-secondary">
           <i class="bi bi-x"></i> Cancel

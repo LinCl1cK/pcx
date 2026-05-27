@@ -7,12 +7,10 @@ if (file_exists(__DIR__ . '/../../catalog/models/ProductModel.php')) {
     require_once __DIR__ . '/../../catalog/models/ProductModel.php';
 }
 
-// CHANGED: Removed the invalid global instantiation of ServiceModel here and moved it into the account() method below.
-
 class AuthController extends BaseController {
     private AuthModel $model;
 
-    public function __construct(PDO $pdo) { 
+    public function __construct(PDO $pdo) {
         parent::__construct($pdo);
         $this->model = new AuthModel($pdo);
     }
@@ -82,12 +80,19 @@ class AuthController extends BaseController {
                 $redirect = BASE_URL . '/?r=technician/technician/dashboard';
             }
 
+            // [SECURITY PATCH] Normalize the data strictly on login
+            $rawRole = trim((string) $user['Emp_Position']);
+            $rawBranch = trim((string) ($user['Emp_BranchId'] ?? ''));
+            $finalBranch = ($rawBranch !== '') ? $rawBranch : null;
+
             $_SESSION['employee'] = [
-                'id'    => $user['Emp_Id'],
-                'name'  => trim($user['Emp_Fname'] . ' ' . $user['Emp_Lname']),
-                'email' => $user['Emp_Email'],
-                'role'  => $user['Emp_Position'],
-                'branch_id' => $user['Emp_BranchId']
+                'id'           => $user['Emp_Id'],
+                'name'         => trim($user['Emp_Fname'] . ' ' . $user['Emp_Lname']),
+                'email'        => $user['Emp_Email'],
+                'role'         => $rawRole,
+                'Emp_Position' => $rawRole,
+                'branch_id'    => $finalBranch,
+                'Emp_BranchId' => $finalBranch
             ];
 
             // ADDED: Save a success flash message into the session registry for the header toast component
@@ -188,19 +193,11 @@ class AuthController extends BaseController {
         }
         $customer = $this->model->findCustomerByEmail($_SESSION['user']['email'] ?? '');
         $orders   = $this->model->getCustomerOrders($userId);
-
-        // --- STEP 2: INJECT DATA HERE ---
-        require_once __DIR__ . '/../../service/models/ServiceModel.php'; // Ensure model is loaded
-        $serviceModel = new ServiceModel($this->db); 
-        $customerId = (string) $_SESSION['user']['id'];
-        $serviceTickets = $serviceModel->listTicketsForCustomer($customerId);
-        // --------------------------------
-
+        
         $this->view('auth/views/account.php', [
             'user'     => $_SESSION['user'] ?? [],
             'customer' => $customer ?? [],
-            'orders'   => $orders,
-            'serviceTickets' => $serviceTickets
+            'orders'   => $orders
         ]);
     }
 

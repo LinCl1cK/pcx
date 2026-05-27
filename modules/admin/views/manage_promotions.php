@@ -2,15 +2,15 @@
 $promotions  = $promotions ?? [];
 $flash       = $flash ?? null;
 $employee    = $employee ?? ($_SESSION['employee'] ?? []);
-$isGeneralAdmin = empty($employee['Emp_BranchId']);
+
+$rawRole = strtolower(trim($employee['Emp_Position'] ?? $employee['role'] ?? ''));
+$isGeneralAdmin = ($rawRole === 'general admin');
+
 $navActive   = 'promotions';
 $pageTitle   = $pageTitle ?? 'Promotions — PCX Admin';
 $pageHeading = $pageHeading ?? 'Manage Promotions';
 $pageSubtitle = 'Oversee marketing campaigns, banners, and scheduled storefront sales.';
-$pageActions = '';
-if ($isGeneralAdmin) {
-    $pageActions = '<a href="' . BASE_URL . '/?r=admin/admin/createPromotion" class="btn btn-primary"><i class="bi bi-megaphone me-1"></i>New Promotion</a>';
-}require dirname(__DIR__, 3) . '/app/views/layouts/employee_begin.php';
+require dirname(__DIR__, 3) . '/app/views/layouts/employee_begin.php';
 ?>
 
 <div class="card border-0 shadow-sm bg-white">
@@ -18,7 +18,14 @@ if ($isGeneralAdmin) {
     <span class="card-title fw-bold text-dark mb-0">
       <i class="bi bi-star text-blue me-2"></i>Campaign Registry
     </span>
+    
+    <?php if ($isGeneralAdmin): ?>
+      <a href="<?= BASE_URL ?>/?r=admin/admin/createPromotion" class="btn btn-sm btn-primary">
+        <i class="bi bi-plus-lg me-1"></i>New Promotion
+      </a>
+    <?php endif; ?>
   </div>
+  
   <div class="card-body p-0">
     <div class="table-responsive">
       <table class="table table-hover align-middle mb-0" style="font-size:.875rem;">
@@ -28,13 +35,15 @@ if ($isGeneralAdmin) {
             <th>Title & Description</th>
             <th>Status</th>
             <th>Duration</th>
-            <th class="text-end pe-4">Actions</th>
+            <?php if ($isGeneralAdmin): ?>
+              <th class="text-end pe-4">Actions</th>
+            <?php endif; ?>
           </tr>
         </thead>
         <tbody>
           <?php if (empty($promotions)): ?>
             <tr>
-              <td colspan="5" class="text-center text-muted py-5">
+              <td colspan="<?= $isGeneralAdmin ? '5' : '4' ?>" class="text-center text-muted py-5">
                 <i class="bi bi-megaphone fs-3 d-block mb-2 opacity-50"></i> No active promotions.
               </td>
             </tr>
@@ -60,11 +69,24 @@ if ($isGeneralAdmin) {
                     <?= !empty($p['Promo_End']) ? htmlspecialchars((string) $p['Promo_End']) : 'Open-ended' ?>
                   </span>
                 </td>
+                
+                <?php if ($isGeneralAdmin): ?>
                 <td class="text-end pe-4">
-                  <a class="btn btn-sm btn-outline-danger" href="<?= BASE_URL ?>/?r=admin/admin/deletePromotion&id=<?= (int) $p['Promo_Id'] ?>" onclick="return confirm('Delete this promotion?')" title="Delete Promotion">
-                    <i class="bi bi-trash"></i> Delete
-                  </a>
+                  <div class="d-inline-flex gap-1">
+                    <a class="btn btn-sm btn-outline-primary"
+                       href="<?= BASE_URL ?>/?r=admin/admin/editPromotion&id=<?= (int) $p['Promo_Id'] ?>"
+                       title="Edit Promotion">
+                      <i class="bi bi-pencil"></i> Edit
+                    </a>
+                    <a class="btn btn-sm btn-outline-danger"
+                       href="<?= BASE_URL ?>/?r=admin/admin/deletePromotion&id=<?= (int) $p['Promo_Id'] ?>"
+                       onclick="return confirm('Delete this promotion permanently?')"
+                       title="Delete Promotion">
+                      <i class="bi bi-trash"></i>
+                    </a>
+                  </div>
                 </td>
+                <?php endif; ?>
               </tr>
             <?php endforeach; ?>
           <?php endif; ?>

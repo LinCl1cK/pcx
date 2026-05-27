@@ -3,24 +3,33 @@ $products    = $products ?? [];
 $categories  = $categories ?? [];
 $flash       = $flash ?? null;
 $employee    = $employee ?? ($_SESSION['employee'] ?? []);
-$isGeneralAdmin = empty($employee['Emp_BranchId']);
+
+$rawRole = strtolower(trim($employee['Emp_Position'] ?? $employee['role'] ?? ''));
+$isGeneralAdmin = ($rawRole === 'general admin');
+
 $navActive   = 'products';
 $pageTitle   = $pageTitle ?? 'Products — PCX Admin';
 $pageHeading = $pageHeading ?? 'Manage Products';
 $pageSubtitle = 'Monitor, update, and expand the primary storefront catalog.';
-$pageActions = '';
-if ($isGeneralAdmin) {
-    $pageActions = '<a href="' . BASE_URL . '/?r=admin/admin/createProduct" class="btn btn-primary"><i class="bi bi-box-seam me-1"></i>Add New Product</a>';
-}require dirname(__DIR__, 3) . '/app/views/layouts/employee_begin.php';
+require dirname(__DIR__, 3) . '/app/views/layouts/employee_begin.php';
 ?>
 
 <div class="card border-0 shadow-sm bg-white">
   <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between">
-    <span class="card-title fw-bold text-dark mb-0">
-      <i class="bi bi-boxes text-blue me-2"></i>Product Inventory
-    </span>
-    <span class="badge bg-light text-secondary border"><?= count($products) ?> Items</span>
+    <div class="d-flex align-items-center gap-2">
+      <span class="card-title fw-bold text-dark mb-0">
+        <i class="bi bi-boxes text-blue me-2"></i>Product Inventory
+      </span>
+      <span class="badge bg-light text-secondary border"><?= count($products) ?> Items</span>
+    </div>
+    
+    <?php if ($isGeneralAdmin): ?>
+      <a href="<?= BASE_URL ?>/?r=admin/admin/createProduct" class="btn btn-sm btn-primary">
+        <i class="bi bi-plus-lg me-1"></i>Add New Product
+      </a>
+    <?php endif; ?>
   </div>
+  
   <div class="card-body p-0">
     <div class="table-responsive">
       <table class="table table-hover align-middle mb-0" style="font-size:.875rem;">
@@ -32,13 +41,15 @@ if ($isGeneralAdmin) {
             <th>Category</th>
             <th>Status</th>
             <th class="text-end">Price</th>
-            <th class="text-end pe-4">Actions</th>
+            <?php if ($isGeneralAdmin): ?>
+              <th class="text-end pe-4">Actions</th>
+            <?php endif; ?>
           </tr>
         </thead>
         <tbody>
           <?php if (empty($products)): ?>
             <tr>
-              <td colspan="7" class="text-center text-muted py-5">
+              <td colspan="<?= $isGeneralAdmin ? '7' : '6' ?>" class="text-center text-muted py-5">
                 <i class="bi bi-inboxes fs-3 d-block mb-2"></i> No products listed in the catalog.
               </td>
             </tr>
@@ -61,6 +72,8 @@ if ($isGeneralAdmin) {
                 <?php endif; ?>
               </td>
               <td class="text-end fw-semibold text-blue">PHP <?= number_format((float) $product['Prod_Price'], 2) ?></td>
+              
+              <?php if ($isGeneralAdmin): ?>
               <td class="text-end pe-4">
                 <div class="d-inline-flex gap-1">
                   <a href="<?= BASE_URL ?>/?r=admin/admin/editProduct&id=<?= urlencode($product['Prod_Id']) ?>" class="btn btn-sm btn-outline-primary" title="Edit Product">
@@ -71,6 +84,7 @@ if ($isGeneralAdmin) {
                   </a>
                 </div>
               </td>
+              <?php endif; ?>
             </tr>
             <?php endforeach; ?>
           <?php endif; ?>

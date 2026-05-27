@@ -5,9 +5,10 @@ $flash       = $flash ?? null;
 $employee    = $employee ?? ($_SESSION['employee'] ?? []);
 
 // Strictly identify the General Admin
-$rawRole     = strtolower(trim($employee['Emp_Position'] ?? $employee['role'] ?? ''));
+// Session stores 'role' and 'branch_id' (set by AuthController::login())
+$rawRole     = strtolower(trim($employee['role'] ?? $employee['Emp_Position'] ?? ''));
 $role        = str_replace('_', ' ', $rawRole);
-$isGeneralAdmin = ($role === 'general admin') && empty($employee['Emp_BranchId']);
+$isGeneralAdmin = ($role === 'general admin') && empty($employee['branch_id'] ?? $employee['Emp_BranchId'] ?? '');
 
 $navActive   = 'employees';
 $pageTitle   = 'Employees — PCX Admin';
@@ -202,7 +203,8 @@ require dirname(__DIR__, 3) . '/app/views/layouts/employee_begin.php';
                   <td class="text-secondary"><?= htmlspecialchars($emp['Emp_Email']) ?></td>
                   <td class="text-end pe-4">
                     <div class="d-inline-flex gap-1">
-                      <a href="<?= BASE_URL ?>/?r=admin/admin/editEmployee&id=<?= urlencode($emp['Emp_Id']) ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                      <a href="<?= BASE_URL ?>/?r=admin/admin/editEmployee&id=<?= urlencode($emp['Emp_Id']) ?>" class="btn btn-sm btn-outline-primary" title="Edit Staff Member"><i class="bi bi-pencil"></i></a>
+                      <a href="<?= BASE_URL ?>/?r=admin/admin/deleteEmployee&id=<?= urlencode($emp['Emp_Id']) ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete <?= htmlspecialchars($emp['Emp_Fname'] . ' ' . $emp['Emp_Lname']) ?>? This cannot be undone.')" title="Remove Staff Member"><i class="bi bi-trash"></i></a>
                     </div>
                   </td>
                 </tr>

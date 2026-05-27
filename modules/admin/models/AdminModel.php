@@ -84,6 +84,34 @@ class AdminModel extends BaseModel
         return $stmt->fetch() ?: null;
     }
 
+    public function createUser(array $data): bool
+    {
+        // Generate a unique Customer ID (e.g., CUS-01234)
+        $id = 'CUS-' . str_pad((string) random_int(1, 99999), 5, '0', STR_PAD_LEFT);
+        
+        $sql = "INSERT INTO Customer 
+                (Cus_Id, Cus_Fname, Cus_Lname, Cus_Email, Cus_ContactNo, Cus_Address, Cus_Password) 
+                VALUES (?, ?, ?, ?, ?, ?, ?)";
+                
+        try {
+            $stmt = $this->db->prepare($sql);
+            return $stmt->execute([
+                $id,
+                $data['fname'],
+                $data['lname'],
+                $data['email'],
+                $data['contact'],
+                $data['address'],
+                // Hash the password for security before storing it in the database
+                password_hash($data['password'], PASSWORD_DEFAULT)
+            ]);
+        } catch (PDOException $e) {
+            // This will catch constraints like a duplicate UNIQUE email address
+            // Returning false will trigger the controller's "Email may already be in use" flash message
+            return false;
+        }
+    }
+
     public function updateUser(string $id, array $data): bool
     {
         $sql = "UPDATE Customer SET Cus_Fname = ?, Cus_Lname = ?, Cus_Email = ?, Cus_ContactNo = ?, Cus_Address = ? WHERE Cus_Id = ?";
@@ -311,15 +339,23 @@ class AdminModel extends BaseModel
     {
         $this->db->beginTransaction();
         try {
+            // Cascade delete safe, non-historical dependencies
             $this->db->prepare("DELETE FROM product_subcategory WHERE Prod_Id = ?")->execute([$id]);
+            $this->db->prepare("DELETE FROM Wishlist WHERE Wish_ProdId = ?")->execute([$id]);
+            $this->db->prepare("DELETE FROM Cart_Item WHERE Cait_ProdId = ?")->execute([$id]);
+            $this->db->prepare("DELETE FROM Inventory WHERE Inv_ProdId = ?")->execute([$id]);
+            
+            // Delete the product itself
             $stmt = $this->db->prepare("DELETE FROM Product WHERE Prod_Id = ?");
             $ok = $stmt->execute([$id]);
+            
             $this->db->commit();
             return $ok;
         } catch (Throwable $e) {
             if ($this->db->inTransaction()) {
                 $this->db->rollBack();
             }
+            // Rethrow so the controller can catch it if Order_Item is tied to it
             throw $e;
         }
     }
@@ -331,11 +367,6 @@ class AdminModel extends BaseModel
     public function getAllCategories(): array
     {
         return $this->db->query("SELECT * FROM Category ORDER BY Cat_Name ASC")->fetchAll();
-    }
-
-    public function getAllSubcategories(): array
-    {
-        return $this->db->query("SELECT * FROM Subcategory ORDER BY Subc_Name ASC")->fetchAll();
     }
 
     public function getCategoryById(string $id): ?array
@@ -366,23 +397,54 @@ class AdminModel extends BaseModel
         return $stmt->execute([$id]);
     }
 
+    // ----------------------------------------------------------------
+    // Subcategories
+    // ----------------------------------------------------------------
+
+    public function getAllSubcategories(): array
+    {
+        return $this->db->query("SELECT * FROM Subcategory ORDER BY Subc_Id DESC")->fetchAll();
+    }
+
     public function createSubcategory(array $data): bool
     {
-        $id = 'SUB-' . str_pad((string) random_int(1, 99999), 5, '0', STR_PAD_LEFT);
+        // Generate a unique ID (e.g., SUBC-01234)
+        $id = 'SUBC-' . str_pad((string) random_int(1, 99999), 5, '0', STR_PAD_LEFT);
+        
         $stmt = $this->db->prepare("INSERT INTO Subcategory (Subc_Id, Subc_Name, Subc_Description) VALUES (?, ?, ?)");
-        return $stmt->execute([$id, $data['name'], $data['description']]);
+        
+        return $stmt->execute([
+            $id,
+            trim($data['name']),
+            trim($data['description'] ?? '')
+        ]);
     }
 
     public function updateSubcategory(string $id, array $data): bool
     {
         $stmt = $this->db->prepare("UPDATE Subcategory SET Subc_Name = ?, Subc_Description = ? WHERE Subc_Id = ?");
-        return $stmt->execute([$data['name'], $data['description'], $id]);
+        return $stmt->execute([trim($data['name']), trim($data['description'] ?? ''), $id]);
     }
 
     public function deleteSubcategory(string $id): bool
     {
-        $stmt = $this->db->prepare("DELETE FROM Subcategory WHERE Subc_Id = ?");
-        return $stmt->execute([$id]);
+        $this->db->beginTransaction();
+        try {
+            // Cascade delete the many-to-many pivot table links first
+            $this->db->prepare("DELETE FROM product_subcategory WHERE Subc_Id = ?")->execute([$id]);
+            
+            // Delete the subcategory itself
+            $stmt = $this->db->prepare("DELETE FROM Subcategory WHERE Subc_Id = ?");
+            $ok = $stmt->execute([$id]);
+            
+            $this->db->commit();
+            return $ok;
+        } catch (Throwable $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $e;
+        }
     }
 
     // ----------------------------------------------------------------
@@ -435,8 +497,25 @@ class AdminModel extends BaseModel
 
     public function deleteBranch(string $id): bool
     {
-        $stmt = $this->db->prepare("DELETE FROM Branch WHERE Branch_Id = ?");
-        return $stmt->execute([$id]);
+        $this->db->beginTransaction();
+        try {
+            // Cascade delete: Remove the automatically generated inventory 
+            // allocations tied to this branch first.
+            $this->db->prepare("DELETE FROM Inventory WHERE Inv_BranchId = ?")->execute([$id]);
+            
+            // Delete the branch itself
+            $stmt = $this->db->prepare("DELETE FROM Branch WHERE Branch_Id = ?");
+            $ok = $stmt->execute([$id]);
+            
+            $this->db->commit();
+            return $ok;
+        } catch (Throwable $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            // Rethrow so the controller can catch it if Orders/Employees are tied to it
+            throw $e;
+        }
     }
 
     // ----------------------------------------------------------------

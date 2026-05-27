@@ -20,12 +20,21 @@ class AdminController extends BaseController
     public function dashboard(): void
     {
         $this->requireRoles(['general admin', 'branch admin']);
-
         $employee = $_SESSION['employee'];
-        // Trim CHAR padding before scoping — prevents false NULL comparisons downstream
-        $scopeBranchId = isset($employee['Emp_BranchId']) ? trim((string) $employee['Emp_BranchId']) : null;
-        if ($scopeBranchId === '') {
-            $scopeBranchId = null;
+
+        // STRICT JURISDICTION SCOPING
+        // Session stores 'role' and 'branch_id' (set by AuthController::login())
+        $rawRole = strtolower(trim($employee['role'] ?? $employee['Emp_Position'] ?? ''));
+        $isGeneralAdmin = ($rawRole === 'general admin');
+
+        if ($isGeneralAdmin) {
+            $scopeBranchId = null; // Global Access
+        } else {
+            $scopeBranchId = trim((string)($employee['branch_id'] ?? $employee['Emp_BranchId'] ?? ''));
+            // Fail-safe: Prevent local admins from gaining global access if branch ID is missing
+            if ($scopeBranchId === '') {
+                $scopeBranchId = 'INVALID_NO_BRANCH';
+            }
         }
 
         View::render(__DIR__ . '/../views/dashboard.php', [
@@ -49,6 +58,40 @@ class AdminController extends BaseController
         $users = $this->model->getAllUsers();
         View::render(__DIR__ . '/../views/manage_users.php', [
             'users'    => $users,
+            'flash'    => $this->pullFlash(),
+            'employee' => $_SESSION['employee'],
+        ]);
+    }
+
+    public function createUser(): void
+    {
+        $this->requireGeneralAdmin();
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $data = [
+                'fname'    => trim($_POST['fname'] ?? ''),
+                'lname'    => trim($_POST['lname'] ?? ''),
+                'email'    => trim($_POST['email'] ?? ''),
+                'contact'  => trim($_POST['contact'] ?? ''),
+                'address'  => trim($_POST['address'] ?? ''),
+                'password' => $_POST['password'] ?? '',
+            ];
+            if ($data['fname'] === '' || $data['lname'] === '' || $data['email'] === '' || $data['password'] === '') {
+                $this->setFlash('danger', 'First name, last name, email, and password are required.');
+            } elseif (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+                $this->setFlash('danger', 'Invalid email address.');
+            } elseif (strlen($data['password']) < 8) {
+                $this->setFlash('danger', 'Password must be at least 8 characters.');
+            } elseif ($this->model->createUser($data)) {
+                $this->setFlash('success', 'Customer account created successfully.');
+                $this->redirect(BASE_URL . '/?r=admin/admin/manageUsers');
+                return;
+            } else {
+                $this->setFlash('danger', 'Failed to create customer. Email may already be in use.');
+            }
+            $this->redirect(BASE_URL . '/?r=admin/admin/createUser');
+            return;
+        }
+        View::render(__DIR__ . '/../views/create_user.php', [
             'flash'    => $this->pullFlash(),
             'employee' => $_SESSION['employee'],
         ]);
@@ -110,29 +153,39 @@ class AdminController extends BaseController
             $this->redirect(BASE_URL . '/?r=admin/admin/manageUsers');
             return;
         }
-        if ($this->model->deleteUser($id)) {
-            $this->setFlash('success', 'User deleted successfully');
-        } else {
-            $this->setFlash('danger', 'Failed to delete user');
+        try {
+            if ($this->model->deleteUser($id)) {
+                $this->setFlash('success', 'Customer deleted successfully.');
+            } else {
+                $this->setFlash('danger', 'Failed to delete customer account.');
+            }
+        } catch (PDOException $e) {
+            $this->setFlash('danger', 'Cannot delete customer: This account is permanently linked to existing order histories.');
         }
         $this->redirect(BASE_URL . '/?r=admin/admin/manageUsers');
     }
 
     // ----------------------------------------------------------------
-    // Employee Management
+    // Employee Management (Secure Jurisdiction Pipeline)
     // ----------------------------------------------------------------
 
     public function manageEmployees(): void
     {
-        $this->requireRoles(['general admin', 'branch admin']);
-
+        $this->requireRoles(['general admin', 'branch admin', 'administrator']);
         $employee = $_SESSION['employee'];
-        // FIX: trim CHAR padding before passing as scope — prevents the model
-        // from receiving padded values that cause WHERE Emp_BranchId = ? to miss rows.
-        $rawBranch     = $employee['Emp_BranchId'] ?? null;
-        $scopeBranchId = ($rawBranch !== null && trim((string) $rawBranch) !== '')
-            ? trim((string) $rawBranch)
-            : null;
+
+        // Session stores 'role' and 'branch_id' (set by AuthController::login())
+        $rawRole = strtolower(trim($employee['role'] ?? $employee['Emp_Position'] ?? ''));
+        $isGeneralAdmin = ($rawRole === 'general admin');
+
+        if ($isGeneralAdmin) {
+            $scopeBranchId = null;
+        } else {
+            $scopeBranchId = trim((string)($employee['branch_id'] ?? $employee['Emp_BranchId'] ?? ''));
+            if ($scopeBranchId === '') {
+                $scopeBranchId = 'INVALID_NO_BRANCH';
+            }
+        }
 
         View::render(__DIR__ . '/../views/manage_employees.php', [
             'employee'  => $employee,
@@ -143,51 +196,42 @@ class AdminController extends BaseController
         ]);
     }
 
-    // FIX (Defect 2-C): REMOVED the orphan getAllEmployees() method that was
-    // incorrectly defined on the Controller and directly accessed $this->db.
-    // Controllers must never query the database. Use AdminModel::getAllEmployees().
-
     public function createEmployee(): void
     {
-        $this->requireRoles(['general admin', 'branch admin']);
-        $currentRole     = $this->currentEmployeeRole();
-        $rawBranch       = $_SESSION['employee']['Emp_BranchId'] ?? null;
-        $currentBranchId = ($rawBranch !== null && trim((string) $rawBranch) !== '')
-            ? trim((string) $rawBranch)
-            : null;
+        $this->requireRoles(['general admin', 'branch admin', 'administrator']);
 
-        $allowedRoles = ($currentRole === 'general admin')
+        $rawRole = strtolower(str_replace('_', ' ', (string)($_SESSION['employee']['role'] ?? $_SESSION['employee']['Emp_Position'] ?? '')));
+        $isGeneralAdmin = ($rawRole === 'general admin');
+
+        $rawBranch       = $_SESSION['employee']['branch_id'] ?? $_SESSION['employee']['Emp_BranchId'] ?? null;
+        $currentBranchId = ($rawBranch !== null && trim((string) $rawBranch) !== '') ? trim((string) $rawBranch) : null;
+
+        // UPDATED: Adjust backend validation to match the new view options
+        $allowedRoles = $isGeneralAdmin
             ? ['Branch Admin', 'General Admin']
-            : ['Sales Representative', 'Technician'];
+            : ['Sales Representative', 'Technician', 'Branch Admin'];
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $targetPosition      = trim($_POST['role'] ?? '');
             $targetPositionLower = strtolower($targetPosition);
             $allowedTargetsLower = array_map('strtolower', $allowedRoles);
 
-            if ($currentRole === 'general admin') {
+            if (!in_array($targetPositionLower, $allowedTargetsLower, true)) {
+                $this->setFlash('danger', 'Security Restriction: You do not have clearance to create this role.');
+                $this->redirect(BASE_URL . '/?r=admin/admin/manageEmployees');
+                return;
+            }
+
+            if ($isGeneralAdmin) {
                 $branch_id = !empty($_POST['branch_id']) ? trim($_POST['branch_id']) : null;
-
-                if (!in_array($targetPositionLower, $allowedTargetsLower, true)) {
-                    $this->setFlash('danger', 'General Administrators are only authorized to create Branch Admins or General Admins.');
-                    $this->redirect(BASE_URL . '/?r=admin/admin/manageEmployees');
-                    return;
-                }
             } else {
-                // Branch Admins are locked to their own branch
-                $branch_id = $currentBranchId;
-
-                if (!in_array($targetPositionLower, $allowedTargetsLower, true)) {
-                    $this->setFlash('danger', 'Security Restriction: Branch Administrators can only create operational staff roles (Sales/Tech).');
-                    $this->redirect(BASE_URL . '/?r=admin/admin/manageEmployees');
-                    return;
-                }
+                $branch_id = $currentBranchId; // Override any form tampering manipulation
             }
 
             $data = [
                 'fname'     => trim($_POST['fname'] ?? ''),
                 'lname'     => trim($_POST['lname'] ?? ''),
-                'position'  => $targetPosition, // Keep exact casing from select element
+                'position'  => $targetPosition,
                 'branch_id' => $branch_id,
                 'email'     => trim($_POST['email'] ?? ''),
                 'contact'   => trim($_POST['contact'] ?? ''),
@@ -223,40 +267,28 @@ class AdminController extends BaseController
 
     public function editEmployee(): void
     {
-        $this->requireRoles(['general admin', 'branch admin']);
-        $currentRole = $this->currentEmployeeRole();
-        // FIX (Defect 1-A): trim CHAR padding on session branch ID before any comparison
-        $rawBranch       = $_SESSION['employee']['Emp_BranchId'] ?? null;
-        $currentBranchId = ($rawBranch !== null) ? trim((string) $rawBranch) : null;
+        $this->requireRoles(['general admin', 'branch admin', 'administrator']);
+
+        // Session stores 'role' and 'branch_id' (set by AuthController::login())
+        $rawRole = strtolower(str_replace('_', ' ', (string)($_SESSION['employee']['role'] ?? $_SESSION['employee']['Emp_Position'] ?? '')));
+        $isGeneralAdmin = ($rawRole === 'general admin');
+
+        $rawBranch       = $_SESSION['employee']['branch_id'] ?? $_SESSION['employee']['Emp_BranchId'] ?? null;
+        $currentBranchId = ($rawBranch !== null && trim((string) $rawBranch) !== '') ? trim((string) $rawBranch) : null;
 
         $targetId       = $_GET['id'] ?? $_POST['Emp_Id'] ?? '';
         $targetEmployee = $this->model->getEmployeeById($targetId);
+
         if (!$targetEmployee) {
+            $this->setFlash('danger', 'Employee record not found.');
             $this->redirect(BASE_URL . '/?r=admin/admin/manageEmployees');
             return;
         }
 
-        // FIX (Defect 1-A): getEmployeeById() now returns trimmed Emp_BranchId,
-        // so this comparison is safe. Explicit trim on both sides as defence-in-depth.
         $targetBranchId = trim((string) ($targetEmployee['Emp_BranchId'] ?? ''));
-        if ($currentRole === 'branch admin' && $targetBranchId !== (string) $currentBranchId) {
-            $this->setFlash('danger', 'Jurisdiction Error: You cannot access profiles from other branches.');
-            $this->redirect(BASE_URL . '/?r=admin/admin/manageEmployees');
-            return;
-        }
 
-        $targetPosition = strtolower(trim($targetEmployee['Emp_Position'] ?? ''));
-        $isReadOnly     = false;
-
-        if ($currentRole === 'general admin' && !in_array($targetPosition, ['branch admin', 'general admin'], true)) {
-            $isReadOnly = true;
-        }
-        if ($currentRole === 'branch admin' && in_array($targetPosition, ['branch admin', 'general admin'], true)) {
-            $isReadOnly = true;
-        }
-
-        if ($isReadOnly && $_SERVER['REQUEST_METHOD'] === 'POST') {
-            $this->setFlash('danger', 'Action Denied: You do not have clearance to modify this role.');
+        if (!$isGeneralAdmin && $targetBranchId !== (string) $currentBranchId) {
+            $this->setFlash('danger', 'Access Denied: This staff member is outside your branch jurisdiction.');
             $this->redirect(BASE_URL . '/?r=admin/admin/manageEmployees');
             return;
         }
@@ -265,48 +297,61 @@ class AdminController extends BaseController
             'employee_data' => $targetEmployee,
             'branches'      => $this->model->getAllBranches(),
             'flash'         => $this->pullFlash(),
-            'employee'      => $_SESSION['employee'],
-            'isReadOnly'    => $isReadOnly,
+            'employee'      => $_SESSION['employee']
         ]);
     }
 
     public function updateEmployee(): void
     {
-        $this->requireRoles(['general admin', 'branch admin']);
+        $this->requireRoles(['general admin', 'branch admin', 'administrator']);
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             $this->redirect(BASE_URL . '/?r=admin/admin/manageEmployees');
             return;
         }
 
-        $currentRole = $this->currentEmployeeRole();
-        // FIX (Defect 1-A): trim CHAR padding on session branch ID
-        $rawBranch       = $_SESSION['employee']['Emp_BranchId'] ?? null;
-        $currentBranchId = ($rawBranch !== null) ? trim((string) $rawBranch) : null;
+        // Session stores 'role' and 'branch_id' (set by AuthController::login())
+        $rawRole = strtolower(str_replace('_', ' ', (string)($_SESSION['employee']['role'] ?? $_SESSION['employee']['Emp_Position'] ?? '')));
+        $isGeneralAdmin = ($rawRole === 'general admin');
+
+        $rawBranch       = $_SESSION['employee']['branch_id'] ?? $_SESSION['employee']['Emp_BranchId'] ?? null;
+        $currentBranchId = ($rawBranch !== null && trim((string) $rawBranch) !== '') ? trim((string) $rawBranch) : null;
 
         $id             = $_POST['id'] ?? '';
         $targetEmployee = $this->model->getEmployeeById($id);
 
         if (!$targetEmployee) {
+            $this->setFlash('danger', 'Employee not found.');
             $this->redirect(BASE_URL . '/?r=admin/admin/manageEmployees');
             return;
         }
 
-        // FIX (Defect 1-A): Both sides trimmed — getEmployeeById() trims DB value,
-        // and currentBranchId is trimmed above.
         $targetBranchId = trim((string) ($targetEmployee['Emp_BranchId'] ?? ''));
-        if ($currentRole === 'branch admin' && $targetBranchId !== (string) $currentBranchId) {
-            $this->setFlash('danger', 'Jurisdiction Error: Cannot modify cross-branch employees.');
+
+        if (!$isGeneralAdmin && $targetBranchId !== (string) $currentBranchId) {
+            $this->setFlash('danger', 'Unauthorized modification attempt on external staff.');
             $this->redirect(BASE_URL . '/?r=admin/admin/manageEmployees');
             return;
+        }
+
+        // Prevent Branch Admins from elevating a technician to a General Admin role via POST manipulation
+        $targetPosition = trim($_POST['role'] ?? '');
+        if (!$isGeneralAdmin) {
+            $allowedTargetsLower = ['sales representative', 'technician'];
+            if (!in_array(strtolower($targetPosition), $allowedTargetsLower, true)) {
+                $targetPosition = $targetEmployee['Emp_Position'];
+            }
+        }
+
+        $branch_id = !empty($_POST['branch_id']) ? trim($_POST['branch_id']) : null;
+        if (!$isGeneralAdmin) {
+            $branch_id = $currentBranchId; // Block changing an existing employee's branch to an external one
         }
 
         $data = [
             'fname'     => trim($_POST['fname'] ?? ''),
             'lname'     => trim($_POST['lname'] ?? ''),
-            'position'  => $_POST['role'] ?? '',
-            'branch_id' => ($currentRole === 'branch admin')
-                            ? $currentBranchId
-                            : (!empty($_POST['branch_id']) ? trim($_POST['branch_id']) : null),
+            'position'  => $targetPosition,
+            'branch_id' => $branch_id,
             'email'     => trim($_POST['email'] ?? ''),
             'contact'   => trim($_POST['contact'] ?? ''),
             'address'   => trim($_POST['address'] ?? ''),
@@ -322,37 +367,51 @@ class AdminController extends BaseController
 
     public function deleteEmployee(): void
     {
-        $this->requireRoles(['general admin', 'branch admin']);
-        $currentRole = $this->currentEmployeeRole();
-        // FIX: trim CHAR padding
-        $rawBranch       = $_SESSION['employee']['Emp_BranchId'] ?? null;
-        $currentBranchId = ($rawBranch !== null) ? trim((string) $rawBranch) : null;
+        $this->requireRoles(['general admin', 'branch admin', 'administrator']);
+
+        // Session stores 'role' and 'branch_id' (set by AuthController::login())
+        $rawRole = strtolower(str_replace('_', ' ', (string)($_SESSION['employee']['role'] ?? $_SESSION['employee']['Emp_Position'] ?? '')));
+        $isGeneralAdmin = ($rawRole === 'general admin');
+
+        $rawBranch       = $_SESSION['employee']['branch_id'] ?? $_SESSION['employee']['Emp_BranchId'] ?? null;
+        $currentBranchId = ($rawBranch !== null && trim((string) $rawBranch) !== '') ? trim((string) $rawBranch) : null;
 
         $targetId       = $_GET['id'] ?? '';
         $targetEmployee = $this->model->getEmployeeById($targetId);
+
         if (!$targetEmployee) {
             $this->redirect(BASE_URL . '/?r=admin/admin/manageEmployees');
             return;
         }
-        $targetPosition = strtolower(trim($targetEmployee['Emp_Position'] ?? ''));
+
         $targetBranchId = trim((string) ($targetEmployee['Emp_BranchId'] ?? ''));
 
-        if ($currentRole === 'branch admin') {
+        if (!$isGeneralAdmin) {
             if ($targetBranchId !== (string) $currentBranchId) {
                 $this->setFlash('danger', 'Jurisdiction Error: You cannot delete staff from other branches.');
                 $this->redirect(BASE_URL . '/?r=admin/admin/manageEmployees');
                 return;
             }
-            if (in_array($targetPosition, ['branch admin', 'general admin'], true)) {
+
+            $targetPosition = strtolower(trim($targetEmployee['Emp_Position'] ?? ''));
+            $targetIsAdmin = in_array($targetPosition, ['administrator', 'branch admin', 'general admin'], true);
+            if ($targetIsAdmin) {
                 $this->setFlash('danger', 'Security Restriction: Branch Admins cannot delete other management roles.');
                 $this->redirect(BASE_URL . '/?r=admin/admin/manageEmployees');
                 return;
             }
         }
 
-        if ($this->model->deleteEmployee($targetId)) {
-            $this->setFlash('success', 'Employee deleted successfully');
+        try {
+            if ($this->model->deleteEmployee($targetId)) {
+                $this->setFlash('success', 'Employee deleted successfully.');
+            } else {
+                $this->setFlash('danger', 'Failed to delete employee.');
+            }
+        } catch (PDOException $e) {
+            $this->setFlash('danger', 'Cannot delete employee: They are tied to active system logs, orders, or service tickets.');
         }
+        
         $this->redirect(BASE_URL . '/?r=admin/admin/manageEmployees');
     }
 
@@ -377,20 +436,43 @@ class AdminController extends BaseController
     {
         $this->requireGeneralAdmin();
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            
+            // 1. Process the File Upload
+            $imageFilename = '';
+            if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
+                // Define target directory
+                $targetDir = $_SERVER['DOCUMENT_ROOT'] . '/assets/images/products/';
+                
+                // Create directory if it doesn't exist
+                if (!is_dir($targetDir)) {
+                    mkdir($targetDir, 0777, true);
+                }
+
+                // Generate a unique filename to prevent overwriting
+                $ext = pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION);
+                $imageFilename = 'prod_' . time() . '_' . uniqid() . '.' . $ext;
+                
+                // Save the file
+                move_uploaded_file($_FILES['image']['tmp_name'], $targetDir . $imageFilename);
+            }
+
+            // 2. Map the Data
             $data = [
                 'name'          => trim($_POST['name'] ?? ''),
                 'brand'         => trim($_POST['brand'] ?? ''),
                 'price'         => (float) ($_POST['price'] ?? 0),
                 'warranty'      => (int) ($_POST['warranty'] ?? 0),
-                'cat_id'        => $_POST['cat_id'] ?? null,
-                'image'         => trim($_POST['image'] ?? ''),
+                'cat_id'        => !empty($_POST['cat_id']) ? $_POST['cat_id'] : null,
+                'image'         => $imageFilename, // Use the uploaded file's generated name
                 'featured'      => isset($_POST['featured']) ? 1 : 0,
                 'description'   => trim($_POST['description'] ?? ''),
                 'status'        => $_POST['status'] ?? 'Active',
                 'subcategories' => array_map('strval', $_POST['subcategories'] ?? []),
             ];
+
+            // 3. Validation and Database Insertion
             if ($data['name'] === '' || $data['brand'] === '' || $data['image'] === '') {
-                $this->setFlash('danger', 'Name, brand, and image are required.');
+                $this->setFlash('danger', 'Name, brand, and a valid product image are required.');
             } elseif ($data['price'] <= 0) {
                 $this->setFlash('danger', 'Price must be greater than zero.');
             } elseif ($data['warranty'] < 0 || $data['warranty'] > 36) {
@@ -411,8 +493,10 @@ class AdminController extends BaseController
             $this->redirect(BASE_URL . '/?r=admin/admin/manageProducts');
             return;
         }
+        
         $categories    = $this->model->getAllCategories();
         $subcategories = $this->model->getAllSubcategories();
+        
         View::render(__DIR__ . '/../views/create_product.php', [
             'categories'    => $categories,
             'subcategories' => $subcategories,
@@ -439,7 +523,7 @@ class AdminController extends BaseController
             'product'              => $product,
             'categories'           => $this->model->getAllCategories(),
             'subcategories'        => $this->model->getAllSubcategories(),
-            'selectedSubcategories'=> $this->model->getProductSubcategoryIds($id),
+            'selectedSubcategories' => $this->model->getProductSubcategoryIds($id),
             'flash'                => $this->pullFlash(),
             'employee'             => $_SESSION['employee'],
         ]);
@@ -501,12 +585,15 @@ class AdminController extends BaseController
         }
         try {
             if ($this->model->deleteProduct($id)) {
-                $this->setFlash('success', 'Product deleted successfully');
+                $this->setFlash('success', 'Product and its inventory records deleted successfully.');
             } else {
-                $this->setFlash('danger', 'Failed to delete product');
+                $this->setFlash('danger', 'Failed to delete product.');
             }
+        } catch (PDOException $e) {
+            // Catches constraint violations if the product exists in historical Orders
+            $this->setFlash('danger', 'Cannot delete product: It is permanently linked to existing customer orders. Please edit the product and set its status to "Discontinued" instead.');
         } catch (Throwable $e) {
-            $this->setFlash('danger', $e->getMessage());
+            $this->setFlash('danger', 'An unexpected error occurred: ' . $e->getMessage());
         }
         $this->redirect(BASE_URL . '/?r=admin/admin/manageProducts');
     }
@@ -601,10 +688,14 @@ class AdminController extends BaseController
             $this->redirect(BASE_URL . '/?r=admin/admin/manageCategories');
             return;
         }
-        if ($this->model->deleteCategory($id)) {
-            $this->setFlash('success', 'Category deleted successfully');
-        } else {
-            $this->setFlash('danger', 'Failed to delete category');
+        try {
+            if ($this->model->deleteCategory($id)) {
+                $this->setFlash('success', 'Category deleted successfully.');
+            } else {
+                $this->setFlash('danger', 'Failed to delete category.');
+            }
+        } catch (PDOException $e) {
+            $this->setFlash('danger', 'Cannot delete category: It is currently assigned to one or more products in the catalog.');
         }
         $this->redirect(BASE_URL . '/?r=admin/admin/manageCategories');
     }
@@ -677,44 +768,57 @@ class AdminController extends BaseController
     {
         $this->requireGeneralAdmin();
         $id = trim($_GET['id'] ?? '');
-        if ($id !== '' && $this->model->deleteBranch($id)) {
-            $this->setFlash('success', 'Branch deleted.');
-        } else {
-            $this->setFlash('danger', 'Failed to delete branch. It may still be referenced.');
+        if ($id !== '') {
+            try {
+                if ($this->model->deleteBranch($id)) {
+                    $this->setFlash('success', 'Branch and its inventory allocations were successfully deleted.');
+                } else {
+                    $this->setFlash('danger', 'Failed to delete branch.');
+                }
+            } catch (PDOException $e) {
+                // Catches 1451 errors if Employees or Orders are linked to this branch
+                $this->setFlash('danger', 'Cannot delete branch: It is actively linked to existing employees, orders, or service tickets.');
+            }
         }
         $this->redirect(BASE_URL . '/?r=admin/admin/manageBranches');
     }
 
     // ----------------------------------------------------------------
-    // Subcategory Management
+    // Subcategories Management
     // ----------------------------------------------------------------
 
     public function manageSubcategories(): void
     {
-        $this->requireGeneralAdmin();
+        $this->requireRoles(['general admin', 'branch admin']);
+
         View::render(__DIR__ . '/../views/manage_subcategories.php', [
-            'subcategories' => $this->model->getAllSubcategories(),
-            'flash'         => $this->pullFlash(),
             'employee'      => $_SESSION['employee'],
+            'subcategories' => $this->model->getAllSubcategories(),
             'navActive'     => 'subcategories',
-            'pageTitle'     => 'Subcategories',
-            'pageHeading'   => 'Subcategories',
+            'pageTitle'     => 'Subcategories — PCX Admin',
+            'pageHeading'   => 'Manage Subcategories',
         ]);
     }
 
     public function createSubcategory(): void
     {
-        $this->requireGeneralAdmin();
-        $data = [
-            'name'        => trim($_POST['name'] ?? ''),
-            'description' => trim($_POST['description'] ?? ''),
-        ];
-        if ($data['name'] === '') {
-            $this->setFlash('danger', 'Subcategory name is required.');
-        } elseif ($this->model->createSubcategory($data)) {
-            $this->setFlash('success', 'Subcategory created.');
-        } else {
-            $this->setFlash('danger', 'Failed to create subcategory.');
+        $this->requireGeneralAdmin(); // Based on your view, only general admins can add
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $data = [
+                'name'        => $_POST['name'] ?? '',
+                'description' => $_POST['description'] ?? ''
+            ];
+
+            if (empty(trim($data['name']))) {
+                $this->setFlash('danger', 'Subcategory name is required.');
+            } else {
+                if ($this->model->createSubcategory($data)) {
+                    $this->setFlash('success', 'Subcategory created successfully.');
+                } else {
+                    $this->setFlash('danger', 'Failed to create subcategory.');
+                }
+            }
         }
         $this->redirect(BASE_URL . '/?r=admin/admin/manageSubcategories');
     }
@@ -722,17 +826,23 @@ class AdminController extends BaseController
     public function updateSubcategory(): void
     {
         $this->requireGeneralAdmin();
-        $id   = trim($_POST['id'] ?? '');
-        $data = [
-            'name'        => trim($_POST['name'] ?? ''),
-            'description' => trim($_POST['description'] ?? ''),
-        ];
-        if ($id === '' || $data['name'] === '') {
-            $this->setFlash('danger', 'Subcategory name is required.');
-        } elseif ($this->model->updateSubcategory($id, $data)) {
-            $this->setFlash('success', 'Subcategory updated.');
-        } else {
-            $this->setFlash('danger', 'Failed to update subcategory.');
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $id = $_POST['id'] ?? '';
+            $data = [
+                'name'        => $_POST['name'] ?? '',
+                'description' => $_POST['description'] ?? ''
+            ];
+
+            if (!empty($id) && !empty(trim($data['name']))) {
+                if ($this->model->updateSubcategory($id, $data)) {
+                    $this->setFlash('success', 'Subcategory updated successfully.');
+                } else {
+                    $this->setFlash('danger', 'Failed to update subcategory.');
+                }
+            } else {
+                $this->setFlash('danger', 'Invalid data provided for update. Name is required.');
+            }
         }
         $this->redirect(BASE_URL . '/?r=admin/admin/manageSubcategories');
     }
@@ -740,11 +850,18 @@ class AdminController extends BaseController
     public function deleteSubcategory(): void
     {
         $this->requireGeneralAdmin();
-        $id = trim($_GET['id'] ?? '');
-        if ($id !== '' && $this->model->deleteSubcategory($id)) {
-            $this->setFlash('success', 'Subcategory deleted.');
-        } else {
-            $this->setFlash('danger', 'Failed to delete subcategory. It may still be assigned to a product.');
+        $id = $_GET['id'] ?? '';
+
+        if (!empty($id)) {
+            try {
+                if ($this->model->deleteSubcategory($id)) {
+                    $this->setFlash('success', 'Subcategory deleted successfully.');
+                } else {
+                    $this->setFlash('danger', 'Failed to delete subcategory.');
+                }
+            } catch (PDOException $e) {
+                $this->setFlash('danger', 'Cannot delete subcategory due to a database constraint.');
+            }
         }
         $this->redirect(BASE_URL . '/?r=admin/admin/manageSubcategories');
     }
@@ -770,29 +887,53 @@ class AdminController extends BaseController
     {
         $this->requireGeneralAdmin();
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            
+            // 1. Process the File Upload
+            $bannerFilename = '';
+            if (isset($_FILES['banner']) && $_FILES['banner']['error'] === UPLOAD_ERR_OK) {
+                // Define target directory (adjust if your assets folder is located elsewhere)
+                $targetDir = $_SERVER['DOCUMENT_ROOT'] . '/assets/images/promos/';
+                
+                // Create directory if it doesn't exist
+                if (!is_dir($targetDir)) {
+                    mkdir($targetDir, 0777, true);
+                }
+
+                // Generate a unique filename to prevent overwriting
+                $ext = pathinfo($_FILES['banner']['name'], PATHINFO_EXTENSION);
+                $bannerFilename = 'promo_' . time() . '_' . uniqid() . '.' . $ext;
+                
+                // Save the file
+                move_uploaded_file($_FILES['banner']['tmp_name'], $targetDir . $bannerFilename);
+            }
+
+            // 2. Map the Data
             $data = [
                 'title'       => trim($_POST['title'] ?? ''),
                 'description' => trim($_POST['description'] ?? ''),
-                'banner'      => trim($_POST['banner'] ?? ''),
+                'banner'      => $bannerFilename, // Use the generated filename, not $_POST
                 'status'      => $_POST['status'] ?? 'Active',
                 'start'       => trim($_POST['start'] ?? ''),
                 'end'         => trim($_POST['end'] ?? ''),
             ];
+
+            // 3. Validation and Database Insertion
             if ($data['title'] === '' || $data['banner'] === '') {
-                $this->setFlash('danger', 'Title and banner filename are required.');
+                $this->setFlash('danger', 'Title and banner image are required.');
                 $this->redirect(BASE_URL . '/?r=admin/admin/createPromotion');
             } elseif (!in_array($data['status'], ['Active', 'Inactive'], true)) {
                 $this->setFlash('danger', 'Invalid promotion status.');
                 $this->redirect(BASE_URL . '/?r=admin/admin/createPromotion');
             } elseif ($this->promotionModel->createPromotion($data)) {
-                $this->setFlash('success', 'Promotion created.');
+                $this->setFlash('success', 'Promotion created successfully.');
                 $this->redirect(BASE_URL . '/?r=admin/admin/managePromotions');
             } else {
-                $this->setFlash('danger', 'Failed to create promotion.');
+                $this->setFlash('danger', 'Failed to create promotion in the database.');
                 $this->redirect(BASE_URL . '/?r=admin/admin/createPromotion');
             }
             return;
         }
+        
         View::render(__DIR__ . '/../views/create_promotion.php', [
             'flash'       => $this->pullFlash(),
             'employee'    => $_SESSION['employee'],
@@ -800,6 +941,65 @@ class AdminController extends BaseController
             'pageTitle'   => 'New promotion',
             'pageHeading' => 'New promotion',
         ]);
+    }
+
+    public function editPromotion(): void
+    {
+        $this->requireGeneralAdmin();
+        $id = (int) ($_GET['id'] ?? 0);
+        if ($id <= 0) {
+            $this->redirect(BASE_URL . '/?r=admin/admin/managePromotions');
+            return;
+        }
+        $promotion = $this->promotionModel->getPromotionById($id);
+        if (!$promotion) {
+            http_response_code(404);
+            echo "Promotion not found";
+            return;
+        }
+        View::render(__DIR__ . '/../views/edit_promotion.php', [
+            'promotion'   => $promotion,
+            'flash'       => $this->pullFlash(),
+            'employee'    => $_SESSION['employee'],
+            'navActive'   => 'promotions',
+            'pageTitle'   => 'Edit Promotion',
+            'pageHeading' => 'Edit Promotion',
+        ]);
+    }
+
+    public function updatePromotion(): void
+    {
+        $this->requireGeneralAdmin();
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect(BASE_URL . '/?r=admin/admin/managePromotions');
+            return;
+        }
+        $id = (int) ($_POST['id'] ?? 0);
+        if ($id <= 0) {
+            $this->redirect(BASE_URL . '/?r=admin/admin/managePromotions');
+            return;
+        }
+        $data = [
+            'title'       => trim($_POST['title'] ?? ''),
+            'description' => trim($_POST['description'] ?? ''),
+            'banner'      => trim($_POST['banner'] ?? ''),
+            'status'      => $_POST['status'] ?? 'Active',
+            'start'       => trim($_POST['start'] ?? ''),
+            'end'         => trim($_POST['end'] ?? ''),
+        ];
+        if ($data['title'] === '' || $data['banner'] === '') {
+            $this->setFlash('danger', 'Title and banner filename are required.');
+            $this->redirect(BASE_URL . '/?r=admin/admin/editPromotion&id=' . $id);
+        } elseif (!in_array($data['status'], ['Active', 'Inactive'], true)) {
+            $this->setFlash('danger', 'Invalid promotion status.');
+            $this->redirect(BASE_URL . '/?r=admin/admin/editPromotion&id=' . $id);
+        } elseif ($this->promotionModel->updatePromotion($id, $data)) {
+            $this->setFlash('success', 'Promotion updated.');
+            $this->redirect(BASE_URL . '/?r=admin/admin/managePromotions');
+        } else {
+            $this->setFlash('danger', 'Failed to update promotion.');
+            $this->redirect(BASE_URL . '/?r=admin/admin/editPromotion&id=' . $id);
+        }
     }
 
     public function deletePromotion(): void
@@ -837,10 +1037,17 @@ class AdminController extends BaseController
         $this->requireRoles(['general admin', 'branch admin', 'sales representative']);
 
         $employee = $_SESSION['employee'];
-        $rawBranch     = $employee['Emp_BranchId'] ?? null;
-        $scopeBranchId = ($rawBranch !== null && trim((string) $rawBranch) !== '')
-            ? trim((string) $rawBranch)
-            : null;
+        $rawRole = strtolower(trim($employee['Emp_Position'] ?? ''));
+        $isGeneralAdmin = ($rawRole === 'general admin');
+
+        if ($isGeneralAdmin) {
+            $scopeBranchId = null;
+        } else {
+            $scopeBranchId = trim((string)($employee['Emp_BranchId'] ?? ''));
+            if ($scopeBranchId === '') {
+                $scopeBranchId = 'INVALID_NO_BRANCH';
+            }
+        }
 
         View::render(__DIR__ . '/../views/orders_staff_index.php', [
             'employee'    => $employee,

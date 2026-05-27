@@ -149,9 +149,10 @@ class BaseController
     protected function requireRoles(array $allowedPositions): void
     {
         $currentRole = $this->currentEmployeeRole();
+        $normalizedAllowed = array_map([$this, 'normalizeRole'], $allowedPositions);
 
         // If not logged in, or their position isn't in the allowed list, reject them
-        if (!$currentRole || !in_array($currentRole, $allowedPositions, true)) {
+        if (!$currentRole || !in_array($currentRole, $normalizedAllowed, true)) {
             http_response_code(403);
             echo "<div style='font-family:sans-serif; padding:2rem; max-width:500px; margin:auto;'>";
             echo "<h1 style='color:#dc3545;'>403 Access Forbidden</h1>";
@@ -167,18 +168,15 @@ class BaseController
      */
     protected function requireGeneralAdmin(): void
     {
-        // 1. Must be an administrator/general admin
+        // Must be an administrator/general admin strictly by string role
+        // We explicitly removed the destructive `Emp_BranchId` verification here
         $role = $this->currentEmployeeRole();
+        
         if ($role !== 'administrator' && $role !== 'general admin') {
-            $this->denyAccess();
-        }
-
-        // 2. Must not belong to a specific branch (branch_id must be empty/null)
-        if (!empty($_SESSION['employee']['branch_id'])) {
             http_response_code(403);
             echo "<div style='padding:2rem; max-width:500px; margin:auto; font-family:sans-serif;'>";
             echo "<h2 style='color:#dc3545;'>Enterprise Clearance Required</h2>";
-            echo "<p>Branch Administrators are restricted from modifying global configurations.</p>";
+            echo "<p>Only General Administrators have clearance to modify global configurations.</p>";
             echo "<a href='" . BASE_URL . "'>Return to Safety</a>";
             echo "</div>";
             exit;

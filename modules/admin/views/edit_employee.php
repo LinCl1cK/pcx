@@ -67,9 +67,11 @@ require dirname(__DIR__, 3) . '/app/views/layouts/employee_begin.php';
             <select class="form-select" id="role" name="role" required <?= $isReadOnly ? 'disabled' : '' ?>>
               <?php
               $currentRole = strtolower(trim($employee['Emp_Position'] ?? $employee['role'] ?? ''));
-              $allowedRoles = ($currentRole === 'general admin') ? ['Branch Admin', 'General Admin'] : ['Sales Representative', 'Technician'];
+              // Expand the roles allowed for General Admin
+              $allowedRoles = ($currentRole === 'general admin') 
+                ? ['Branch Admin', 'General Admin', 'Sales Representative', 'Technician'] 
+                : ['Sales Representative', 'Technician'];
 
-              // Include their current role just so the select box doesn't break if viewing a read-only entity
               if (!in_array($employee_data['Emp_Position'], $allowedRoles)) {
                 $allowedRoles[] = $employee_data['Emp_Position'];
               }

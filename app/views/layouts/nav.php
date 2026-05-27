@@ -175,8 +175,9 @@ function navLink(string $href, string $icon, string $label, bool $active): strin
             <span class="sidebar-heading mt-3">Storefront Content</span>
           </li>
           
-          <?= navLink(BASE_URL . '/?r=catalog/product/index', 'bi-box-seam', 'Products', $navActive === 'products') ?>
-          <?= navLink(BASE_URL . '/?r=catalog/category/index', 'bi-tags', 'Categories', $navActive === 'categories') ?>
+          <?= navLink(BASE_URL . '/?r=admin/admin/manageProducts', 'bi-box-seam', 'Products', $navActive === 'products') ?>
+          <?= navLink(BASE_URL . '/?r=admin/admin/manageCategories', 'bi-tags', 'Categories', $navActive === 'categories') ?>
+          <?= navLink(BASE_URL . '/?r=admin/admin/manageSubcategories', 'bi-bookmarks', 'Subcategories', $navActive === 'subcategories') ?>
           <?= navLink(BASE_URL . '/?r=admin/admin/managePromotions', 'bi-megaphone', 'Promotions', $navActive === 'promotions') ?>
         </ul>
       <?php endif; ?>
@@ -185,6 +186,10 @@ function navLink(string $href, string $icon, string $label, bool $active): strin
       <ul class="nav flex-column mb-2">
         <?= navLink(BASE_URL . '/?r=order/order/manageOrders', 'bi-receipt', 'Orders Console', $navActive === 'orders') ?>
         <?= navLink(BASE_URL . '/?r=inventory/inventory/index', 'bi-boxes', 'Inventory Control', $navActive === 'inventory') ?>
+
+        <?php if ($isAdmin): ?>
+          <?= navLink(BASE_URL . '/?r=admin/admin/manageEmployees', 'bi-people', 'Employees', $navActive === 'employees') ?>
+        <?php endif; ?>
 
         <?php 
         // Verification Routing Strategy
@@ -268,7 +273,7 @@ function navLink(string $href, string $icon, string $label, bool $active): strin
         <div id="flashToast" class="alert <?= $isDanger ? 'alert-danger' : 'alert-success' ?> alert-dismissible fade show border-0 shadow-sm d-flex align-items-center gap-2 p-3 mb-0 rounded-3" role="alert">
           <i class="bi <?= $isDanger ? 'bi-exclamation-octagon-fill text-danger' : 'bi-check-circle-fill text-success' ?> fs-5"></i>
           <div class="small fw-semibold"><?= htmlspecialchars($activeFlash['message'] ?? '') ?></div>
-          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          <button type="button" class="btn-close" data-bs-dismiss=\"alert\" aria-label="Close"></button>
         </div>
       <?php endif; ?>
 

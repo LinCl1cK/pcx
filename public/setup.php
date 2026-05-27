@@ -40,7 +40,7 @@ try {
     // 2. EMPLOYEES (Updated Admin & Branch Roles Framework)
     $employees = [
         // GENERAL ADMINS
-        ['EMP-001', 'Juan', 'Dela Cruz', 'juan.dc@pcx.com.ph', 'General Admin', 'BRAN-001', password_hash('admin123', PASSWORD_DEFAULT), '09171234567', '123 Main St, Cebu City'],
+        ['EMP-001', 'Juan', 'Dela Cruz', 'juan.dc@pcx.com.ph', 'General Admin', null, password_hash('admin123', PASSWORD_DEFAULT), '09171234567', '123 Main St, Cebu City'],
         ['EMP-002', 'Sarah', 'Connor', 's.connor@pcx.com.ph', 'General Admin', null, password_hash('admin123', PASSWORD_DEFAULT), '09170000000', 'No Branch Office'],
 
         // BRANCH 1: SM Seaside
