@@ -90,7 +90,7 @@ CREATE TABLE `employee` (
   `Emp_Lname` varchar(50) NOT NULL,
   `Emp_Email` VARCHAR(255) NOT NULL,
   `Emp_Position` varchar(50) NOT NULL,
-  `Emp_BranchId` char(10) NOT NULL,
+  `Emp_BranchId` char(10) DEFAULT NULL,
   `Emp_Password` varchar(255) NOT NULL,
   `Emp_ContactNo` varchar(15) NOT NULL,
   `Emp_Address` varchar(255) NOT NULL,
@@ -160,6 +160,7 @@ DROP TABLE IF EXISTS `orders`;
 CREATE TABLE `orders` (
   `Order_Id` char(10) NOT NULL,
   `Order_Date` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `Order_BranchId` char(10) DEFAULT NULL,
   `Order_Status` enum('Pending','Confirmed','Paid','Completed','Cancelled') NOT NULL,
   `Order_Shipping` enum('Delivery','Pickup') NOT NULL,
   `Order_DestinationAddress` TEXT NOT NULL,
@@ -173,8 +174,10 @@ CREATE TABLE `orders` (
   PRIMARY KEY (`Order_Id`),
   KEY `Order_CusId` (`Order_CusId`),
   KEY `Order_VerifiedBy` (`Order_VerifiedBy`),
+  KEY `Order_BranchId` (`Order_BranchId`),
   CONSTRAINT `orders_ibfk_1` FOREIGN KEY (`Order_CusId`) REFERENCES `customer` (`Cus_Id`),
-  CONSTRAINT `orders_ibfk_2` FOREIGN KEY (`Order_VerifiedBy`) REFERENCES `employee` (`Emp_Id`)
+  CONSTRAINT `orders_ibfk_2` FOREIGN KEY (`Order_VerifiedBy`) REFERENCES `employee` (`Emp_Id`),
+  CONSTRAINT `orders_ibfk_3` FOREIGN KEY (`Order_BranchId`) REFERENCES `branch` (`Branch_Id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- From: pcx_db_wishlist.sql

@@ -15,4 +15,4 @@ $pageTitle = $pageTitle ?? 'PCX';
   <link href="<?= BASE_URL ?>/assets/css/style.css" rel="stylesheet">
 </head>
 
-<body class="bg-light">
+<body class="bg-light" data-base-url="<?= BASE_URL ?>">

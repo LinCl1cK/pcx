@@ -6,6 +6,14 @@ $navActive = $navActive ?? 'orders';
 $pageTitle = $pageTitle ?? 'Order Directory — PCX Admin';
 $pageHeading = $pageHeading ?? 'Order Directory';
 $pageSubtitle = 'Read-only archive of global sales invoices and receipts.';
+
+$rawRole    = strtolower((string)($employee['Emp_Position'] ?? $employee['role'] ?? ''));
+$role       = str_replace('_', ' ', $rawRole);
+$isGeneralAdmin = ($role === 'general admin') && empty($employee['Emp_BranchId']);
+
+// ADD THIS ROLE DEFINITION MATCHING YOUR nav.php RULE:
+$isBranchAdmin  = ($role === 'administrator' || $role === 'branch admin');
+
 require dirname(__DIR__, 3) . '/app/views/layouts/employee_begin.php';
 ?>
 
@@ -26,45 +34,63 @@ require dirname(__DIR__, 3) . '/app/views/layouts/employee_begin.php';
             <th>Order Status</th>
             <th class="text-end">Total Allocation</th>
             <th class="text-end pe-4">Timestamp</th>
-            <th class="text-end pe-4">Actions</th>
-          </tr>
+
+            <th class="text-end pe-4">
+              <?= $isGeneralAdmin ? 'Clearance Status' : 'Fulfillment Actions' ?>
+            </th>
           </tr>
         </thead>
         <tbody>
           <?php if (empty($orders)): ?>
             <tr>
-              <td colspan="5" class="text-center text-muted py-5"><i class="bi bi-basket fs-3 d-block mb-2"></i>No orders logged in the database.</td>
+              <td colspan="6" class="text-center text-muted py-4">No records found.</td>
             </tr>
           <?php else: ?>
             <?php foreach ($orders as $o): ?>
               <tr>
-                <td class="ps-4">
-                  <span class="fw-bold text-dark d-block">#<?= htmlspecialchars((string) $o['Order_Id']) ?></span>
-                  <span class="text-muted font-monospace small">INV-<?= htmlspecialchars((string) $o['Order_InvoiceNo']) ?></span>
+                <td class="ps-4 font-monospace fw-semibold text-secondary">
+                  <?= htmlspecialchars((string) ($o['Order_InvoiceNo'] ?? $o['Order_Id'])) ?>
+                </td>
+                <td class="fw-bold text-dark">
+                  <?= htmlspecialchars(trim(($o['Cus_Fname'] ?? '') . ' ' . ($o['Cus_Lname'] ?? ''))) ?>
                 </td>
                 <td>
-                  <span class="fw-bold text-dark d-block"><?= htmlspecialchars(trim(($o['Cus_Fname'] ?? '') . ' ' . ($o['Cus_Lname'] ?? ''))) ?></span>
-                  <?php if (!empty($o['Cus_Email'])): ?>
-                    <span class="text-secondary small"><?= htmlspecialchars((string) $o['Cus_Email']) ?></span>
-                  <?php endif; ?>
+                  <span class="badge bg-light text-dark border"><?= htmlspecialchars((string)$o['Order_Status']) ?></span>
                 </td>
-                <td><span class="badge bg-light text-secondary border px-2 py-1"><?= htmlspecialchars((string) $o['Order_Status']) ?></span></td>
-                <td class="text-end fw-semibold text-blue">PHP <?= number_format((float) $o['Order_TotalAmount'], 2) ?></td>
-                <td class="text-end pe-4 text-muted small"><?= htmlspecialchars((string) $o['Order_Date']) ?></td>
+                <td class="text-end fw-semibold text-blue">
+                  PHP <?= number_format((float) ($o['Order_TotalAmount'] ?? 0), 2) ?>
+                </td>
+                <td class="text-end pe-4 text-muted small">
+                  <?= htmlspecialchars((string) $o['Order_Date']) ?>
+                </td>
 
-                <td class="text-end pe-4">
-                  <?php if ($o['Order_Status'] === 'Pending'): ?>
-                    <form method="post" action="<?= BASE_URL ?>/?r=sales/sales/cancel" class="m-0">
-                      <input type="hidden" name="order_id" value="<?= htmlspecialchars((string) $o['Order_Id']) ?>">
-                      <button class="btn btn-sm btn-outline-danger" type="submit" onclick="return confirm('Cancel this pending order?')"><i class="bi bi-trash3 me-1"></i>Drop</button>
-                    </form>
-                  <?php elseif ($o['Order_Status'] === 'Confirmed' && (string) ($o['Order_VerifiedBy'] ?? '') === $employeeId): ?>
-                    <form method="post" action="<?= BASE_URL ?>/?r=sales/sales/cancel" class="m-0">
-                      <input type="hidden" name="order_id" value="<?= htmlspecialchars((string) $o['Order_Id']) ?>">
-                      <button class="btn btn-sm btn-danger" type="submit" onclick="return confirm('Warning: You are cancelling an order you previously verified. Proceed?')"><i class="bi bi-x-octagon me-1"></i>Revoke</button>
-                    </form>
+                <td class="text-end py-3 pe-4">
+                  <?php if ($isGeneralAdmin): ?>
+                    <span class="text-muted small text-uppercase fw-semibold">
+                      <i class="bi bi-eye-fill me-1"></i>Read-Only (Global)
+                    </span>
+                  <?php elseif ($isBranchAdmin): ?>
+                    <span class="text-muted small text-uppercase fw-semibold">
+                      <i class="bi bi-eye-fill me-1"></i>Read-Only (Branch)
+                    </span>
                   <?php else: ?>
-                    <span class="text-muted small"><i class="bi bi-lock me-1"></i>System Locked</span>
+                    <?php if ($o['Order_Status'] === 'Pending'): ?>
+                      <form method="post" action="<?= BASE_URL ?>/?r=sales/sales/cancel" class="m-0 d-inline-block">
+                        <input type="hidden" name="order_id" value="<?= htmlspecialchars((string) $o['Order_Id']) ?>">
+                        <button class="btn btn-sm btn-outline-danger" type="submit" onclick="return confirm('Cancel this pending order?')">
+                          <i class="bi bi-trash3 me-1"></i>Drop
+                        </button>
+                      </form>
+                    <?php elseif ($o['Order_Status'] === 'Confirmed' && (string) ($o['Order_VerifiedBy'] ?? '') === $employeeId): ?>
+                      <form method="post" action="<?= BASE_URL ?>/?r=sales/sales/cancel" class="m-0 d-inline-block">
+                        <input type="hidden" name=\"order_id\" value=\"<?= htmlspecialchars((string) $o['Order_Id']) ?>\">
+                        <button class="btn btn-sm btn-danger" type="submit" onclick="return confirm('Warning: Revoke order?')">
+                          <i class="bi bi-x-octagon me-1\"></i>Revoke
+                        </button>
+                      </form>
+                    <?php else: ?>
+                      <span class="text-muted small"><i class="bi bi-lock me-1"></i>System Locked</span>
+                    <?php endif; ?>
                   <?php endif; ?>
                 </td>
               </tr>

@@ -1,18 +1,19 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
 
+
 :root {
   --bg-main: #ffffff;
   --bg-sub: #f8f9fa;
   --border-color: #e9ecef;
-  
+
   --accent-blue: #0d6efd;
   --accent-blue-hover: #0b5ed7;
   --accent-blue-light: #e7f1ff;
-  
+
   --accent-red: #dc3545;
   --accent-red-hover: #bb2d3b;
   --accent-red-light: #f8d7da;
-  
+
   --text-primary: #212529;
   --text-secondary: #6c757d;
   --sidebar-width: 260px;
@@ -46,6 +47,119 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 0 1.5rem;
+}
+
+:root {
+  --sidebar-w: 260px;
+  --brand-dark: #0f172a;
+  --sidebar-bg: #1e293b;
+  --sidebar-hover: rgba(255, 255, 255, 0.06);
+  --active-accent: #0284c7;
+  --border-color: #e2e8f0;
+}
+
+.layout-wrapper {
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+  align-items: stretch;
+}
+
+#pcxSidebar {
+  min-width: var(--sidebar-w);
+  max-width: var(--sidebar-w);
+  background-color: var(--sidebar-bg) !important;
+  color: #cbd5e1;
+  transition: all 0.25s ease-in-out;
+  z-index: 1050;
+  display: flex;
+  flex-direction: column;
+}
+
+#pcxSidebar .sidebar-header {
+  background-color: var(--brand-dark);
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+#pcxSidebar .nav-link {
+  color: #94a3b8;
+  padding: 0.7rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 0.375rem;
+  margin: 0.15rem 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.15s ease;
+  text-decoration: none;
+}
+
+#pcxSidebar .nav-link:hover {
+  background-color: var(--sidebar-hover);
+  color: #f8fafc;
+}
+
+#pcxSidebar .nav-link.active {
+  background-color: var(--active-accent) !important;
+  color: #ffffff !important;
+}
+
+#pcxSidebar .sidebar-heading {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  font-weight: 700;
+  padding: 1.25rem 1.5rem 0.5rem;
+}
+
+.main-content-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex-grow: 1;
+  background-color: #f8fafc;
+}
+
+.top-navbar {
+  background-color: #ffffff;
+  border-bottom: 1px solid var(--border-color);
+  min-height: 62px;
+  display: flex;
+  align-items: center;
+  padding: 0 1.5rem;
+}
+
+#sidebarOverlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(15, 23, 42, 0.5);
+  z-index: 1040;
+  backdrop-filter: blur(2px);
+}
+
+@media (max-width: 991.98px) {
+  #pcxSidebar {
+    margin-left: calc(-1 * var(--sidebar-w));
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+  }
+
+  #pcxSidebar.open {
+    margin-left: 0;
+  }
+
+  #sidebarOverlay.show {
+    display: block;
+  }
 }
 
 .header-brand {
@@ -151,13 +265,14 @@ body {
 }
 
 .dashboard-metric-card {
-    transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-    cursor: pointer;
-  }
-  .dashboard-metric-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 .5rem 1.5rem rgba(0,0,0,.08) !important;
-  }
+  transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  cursor: pointer;
+}
+
+.dashboard-metric-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 .5rem 1.5rem rgba(0, 0, 0, .08) !important;
+}
 
 /* Right Column Workspace Frame */
 .main-content {
@@ -190,21 +305,46 @@ body {
   background-color: var(--accent-blue);
   border-color: var(--accent-blue);
 }
-.btn-primary:hover, .btn-primary:focus {
+
+.btn-primary:hover,
+.btn-primary:focus {
   background-color: var(--accent-blue-hover);
   border-color: var(--accent-blue-hover);
 }
 
-.text-blue { color: var(--accent-blue) !important; }
-.text-red { color: var(--accent-red) !important; }
-.bg-blue-light { background-color: var(--accent-blue-light) !important; }
-.bg-red-light { background-color: var(--accent-red-light) !important; }
+.text-blue {
+  color: var(--accent-blue) !important;
+}
+
+.text-red {
+  color: var(--accent-red) !important;
+}
+
+.bg-blue-light {
+  background-color: var(--accent-blue-light) !important;
+}
+
+.bg-red-light {
+  background-color: var(--accent-red-light) !important;
+}
 
 @media (max-width: 992px) {
-  .sidebar-nav { transform: translateX(-100%); }
-  .sidebar-nav.open { transform: translateX(0); }
-  .main-content { margin-left: 0; padding: calc(var(--header-height) + 1.25rem) 1rem 1.25rem; }
-  .header-search { display: none; }
+  .sidebar-nav {
+    transform: translateX(-100%);
+  }
+
+  .sidebar-nav.open {
+    transform: translateX(0);
+  }
+
+  .main-content {
+    margin-left: 0;
+    padding: calc(var(--header-height) + 1.25rem) 1rem 1.25rem;
+  }
+
+  .header-search {
+    display: none;
+  }
 }
 
 
@@ -339,8 +479,9 @@ body {
   background: #111827;
 }
 
-#authModal ~ .modal-backdrop.show {
-    opacity: 0.75; /* Default is 0.5; raising it dims the underlying page elements further */
+#authModal~.modal-backdrop.show {
+  opacity: 0.75;
+  /* Default is 0.5; raising it dims the underlying page elements further */
 }
 
 /* ==========================================================================
@@ -348,26 +489,31 @@ body {
    ========================================================================== */
 
 /* 1. Force the root window layers to scale to 100% viewport height */
-html, body {
-    min-height: 100%;
-    margin: 0;
-    padding: 0;
+html,
+body {
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 /* 2. Turn the body into a vertical flexbox column stack */
 body {
-    display: flex;
-    flex-direction: column;
-    min-vh-100: 100vh; /* Safety fallback for standard viewport tracking */
+  display: flex;
+  flex-direction: column;
+  min-vh-100: 100vh;
+  /* Safety fallback for standard viewport tracking */
 }
 
 /* 3. Force the main workspace container to expand and swallow empty space */
-main, .main-content, #main-wrapper {
-    flex: 1 0 auto;
+main,
+.main-content,
+#main-wrapper {
+  flex: 1 0 auto;
 }
 
 /* 4. Ensure the footer stays at the very bottom and never shrinks out of view */
 footer {
-    flex-shrink: 0;
-    margin-top: auto; /* Pushes itself to the bottom if content is short */
+  flex-shrink: 0;
+  margin-top: auto;
+  /* Pushes itself to the bottom if content is short */
 }

@@ -38,7 +38,7 @@ require dirname(__DIR__, 3) . '/app/views/layouts/employee_begin.php';
 <div class="card border-0 shadow-sm bg-white">
   <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
     <span class="fw-bold text-dark"><i class="bi bi-cart-check text-blue me-2"></i>Pending Order Queue</span>
-    <a class="btn btn-sm btn-outline-primary" href="<?= BASE_URL ?>/?r=sales/sales/orders">Process Pipeline</a>
+    <a class="btn btn-sm btn-outline-primary" href="<?= BASE_URL ?>/?r=order/order/manageOrders">Process Pipeline</a>
   </div>
   <div class="card-body p-0">
     <div class="table-responsive">

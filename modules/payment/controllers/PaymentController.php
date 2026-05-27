@@ -1,23 +1,27 @@
 <?php
+
 declare(strict_types=1);
 
 require_once __DIR__ . '/../models/PaymentModel.php';
 require_once __DIR__ . '/../../catalog/models/ProductModel.php';
 require_once __DIR__ . '/../../order/models/OrderModel.php';
 
-class PaymentController extends BaseController {
+class PaymentController extends BaseController
+{
     private PaymentModel $model;
     private ProductModel $productModel;
     private OrderModel $orderModel;
 
-    public function __construct(PDO $pdo) {
+    public function __construct(PDO $pdo)
+    {
         parent::__construct($pdo);
         $this->model = new PaymentModel($pdo);
         $this->productModel = new ProductModel($pdo);
         $this->orderModel = new OrderModel($pdo);
     }
 
-    private function handleIdUpload(string $customerId, bool $required, ?string $existingPath): ?string {
+    private function handleIdUpload(string $customerId, bool $required, ?string $existingPath): ?string
+    {
         $file = $_FILES['id_attachment'] ?? null;
         $hasUpload = is_array($file) && ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
         if (!$hasUpload) {
@@ -52,7 +56,8 @@ class PaymentController extends BaseController {
         return 'assets/uploads/ids/' . $filename;
     }
 
-    private function validatePaymentChoice(string $paymentChoice, float $amount, string $region, string $gatewayRef, float $expectedAmount): array {
+    private function validatePaymentChoice(string $paymentChoice, float $amount, string $region, string $gatewayRef, float $expectedAmount): array
+    {
         if (!in_array($paymentChoice, ['COD', 'Cashless'], true)) {
             throw new RuntimeException('Invalid payment option.');
         }
@@ -76,7 +81,8 @@ class PaymentController extends BaseController {
         return ['method' => 'Cashless', 'gatewayRef' => $gatewayRef];
     }
 
-    public function checkout(): void {
+    public function checkout(): void
+    {
         $this->requireCustomer('order/order/checkout');
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             $this->redirect(BASE_URL . '/?r=order/order/checkout');
@@ -92,17 +98,22 @@ class PaymentController extends BaseController {
         $gatewayRef = trim((string) ($_POST['gateway_ref'] ?? ''));
         $amount = (float) ($_POST['payment_amount'] ?? 0);
 
+        $finalBranchId = null; // ADDED: Initialize branch ID state
+
         try {
             if (!in_array($shipping, ['Delivery', 'Pickup'], true)) {
                 throw new RuntimeException('Invalid shipping method.');
             }
+
             if ($shipping === 'Pickup') {
                 $branch = $this->orderModel->getPickupBranchForCart($customerId, $pickupBranchId);
                 if (!$branch) {
                     throw new RuntimeException('Please select a pickup branch with enough stock for every cart item.');
                 }
                 $destinationAddress = $this->orderModel->formatPickupAddress($branch);
+                $finalBranchId = (string) $branch['Branch_Id']; // ADDED: Capture branch ID
             }
+
             if ($destinationAddress === '') {
                 throw new RuntimeException('Destination address is required.');
             }
@@ -114,14 +125,25 @@ class PaymentController extends BaseController {
             if ($paymentChoice === 'COD') {
                 $amount = $expectedAmount;
             }
+
             $customer = $this->orderModel->getCustomerForCheckout($customerId);
             $idPath = $this->handleIdUpload($customerId, $expectedAmount >= 50000, $customer['Cus_IdAttachment'] ?? null);
+
             if ($idPath !== null) {
                 $this->orderModel->updateCustomerIdAttachment($customerId, $idPath);
             }
+
             $payment = $this->validatePaymentChoice($paymentChoice, $amount, $region, $gatewayRef, $expectedAmount);
 
-            $orderId = $this->orderModel->placeOrderFromCart($customerId, $shipping, $destinationAddress, $contactNo !== '' ? $contactNo : null);
+            // ADDED: Pass $finalBranchId as the 5th parameter to the OrderModel
+            $orderId = $this->orderModel->placeOrderFromCart(
+                $customerId,
+                $shipping,
+                $destinationAddress,
+                $contactNo !== '' ? $contactNo : null,
+                $finalBranchId
+            );
+
             $this->model->createPendingPayment($orderId, $customerId, $payment['method'], $expectedAmount, $payment['gatewayRef']);
             $this->setFlash('success', 'Order placed. Payment is pending staff confirmation.');
             $this->redirect(BASE_URL . '/?r=order/order/track');
@@ -131,7 +153,8 @@ class PaymentController extends BaseController {
         }
     }
 
-    public function pay(): void {
+    public function pay(): void
+    {
         $this->requireCustomer('auth/auth/account');
         $orderId = trim((string) ($_GET['id'] ?? $_POST['order_id'] ?? ''));
         $order = $this->model->getOrder($orderId);
@@ -194,7 +217,8 @@ class PaymentController extends BaseController {
         ]);
     }
 
-    public function index(): void {
+    public function index(): void
+    {
         $this->requireStaffOrdersPayments();
         $payments = $this->model->listAllWithOrders();
         View::render(__DIR__ . '/../views/payment_staff_index.php', [
@@ -208,11 +232,12 @@ class PaymentController extends BaseController {
         ]);
     }
 
-    public function confirm(): void {
+    public function confirm(): void
+    {
         $this->requireEmployee(['Administrator', 'Sales Representative']);
         $paymentId = trim((string) ($_POST['pay_id'] ?? ''));
         try {
-            $result = $this->model->confirmPayment($paymentId, $this->isSalesRepresentative());
+            $result = $this->model->confirmPayment($paymentId, $this->isSalesRepresentative() || $this->isAdministrator());
             $message = ($result['method'] ?? '') === 'COD'
                 ? 'COD payment confirmed after fulfillment check.'
                 : 'Payment confirmed. Order is now paid.';

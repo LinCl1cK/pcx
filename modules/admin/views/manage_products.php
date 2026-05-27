@@ -3,12 +3,15 @@ $products    = $products ?? [];
 $categories  = $categories ?? [];
 $flash       = $flash ?? null;
 $employee    = $employee ?? ($_SESSION['employee'] ?? []);
+$isGeneralAdmin = empty($employee['Emp_BranchId']);
 $navActive   = 'products';
 $pageTitle   = $pageTitle ?? 'Products — PCX Admin';
 $pageHeading = $pageHeading ?? 'Manage Products';
 $pageSubtitle = 'Monitor, update, and expand the primary storefront catalog.';
-$pageActions = '<a href="' . BASE_URL . '/?r=admin/admin/createProduct" class="btn btn-primary"><i class="bi bi-box-seam me-1"></i>Add New Product</a>';
-require dirname(__DIR__, 3) . '/app/views/layouts/employee_begin.php';
+$pageActions = '';
+if ($isGeneralAdmin) {
+    $pageActions = '<a href="' . BASE_URL . '/?r=admin/admin/createProduct" class="btn btn-primary"><i class="bi bi-box-seam me-1"></i>Add New Product</a>';
+}require dirname(__DIR__, 3) . '/app/views/layouts/employee_begin.php';
 ?>
 
 <div class="card border-0 shadow-sm bg-white">
